@@ -453,6 +453,10 @@ function AboutLocationBlock({ theme, t, lang }) {
               fontFamily: '"DM Sans", sans-serif',
               fontSize: 12.5, color: theme.inkMute, marginTop: 1,
             }}>{t.home_about_addr_l2}</div>
+            <div style={{
+              fontFamily: '"DM Sans", sans-serif',
+              fontSize: 12.5, color: theme.inkMute, marginTop: 1,
+            }}>+32 465 20 60 24</div>
           </div>
         </div>
 
