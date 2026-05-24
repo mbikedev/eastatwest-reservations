@@ -91,7 +91,7 @@ const Wordmark = ({ color = 'currentColor', size = 14 }) => (
     fontSize: size, color, textTransform: 'uppercase',
     fontFeatureSettings: '"smcp"',
     whiteSpace: 'nowrap',
-  }}>East <span style={{ fontStyle: 'italic', letterSpacing: '0.18em' }}>@</span> West</span>
+  }}>East <span style={{ fontStyle: 'italic', letterSpacing: '0.18em' }}>at</span> West</span>
 );
 
 // ─────────────────────────────────────────────────────────────
