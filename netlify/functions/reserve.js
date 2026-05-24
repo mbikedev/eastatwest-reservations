@@ -238,40 +238,76 @@ function buildRestaurantHtml(data, code, lang) {
 
   const rows = [
     [c.name, data.name],
-    [c.email, data.email],
+    [c.email, `<a href="mailto:${data.email}" style="color:#1F5C2E;">${data.email}</a>`],
     [c.phone, data.phone || '—'],
     [c.party, String(data.party)],
     [c.date, data.date],
-    [c.time, data.endTime ? `${data.time} → ${data.endTime}` : data.time],
+    [c.time, data.endTime ? `${data.time} &rarr; ${data.endTime}` : data.time],
     data.occasion && data.occasion !== 'none' ? [c.occasion, data.occasion] : null,
     data.notes ? [c.notes, data.notes] : null,
-    data.specialRequests ? [c.special, data.specialRequests] : null,
+    data.specialRequests ? [c.special, data.specialRequests.replace(/\n/g, '<br>')] : null,
   ]
     .filter(Boolean)
     .map(
       ([label, value]) => `
     <tr>
-      <td style="padding:11px 0;border-bottom:1px solid #eee;font-size:12px;color:#999;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;width:110px;vertical-align:top;">${label}</td>
-      <td style="padding:11px 0;border-bottom:1px solid #eee;font-size:14px;color:#222;font-weight:500;line-height:1.5;">${value}</td>
+      <td style="padding:12px 16px 12px 0;border-bottom:1px solid #eee;font-size:11px;color:#999;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;white-space:nowrap;vertical-align:top;width:1%;">${label}</td>
+      <td style="padding:12px 0 12px 0;border-bottom:1px solid #eee;font-size:14px;color:#1A2419;font-weight:500;line-height:1.5;word-break:break-word;">${value}</td>
     </tr>`
     )
     .join('');
 
   return `<!DOCTYPE html>
 <html>
-<head><meta charset="UTF-8"/></head>
-<body style="margin:0;padding:32px 16px;background:#f5f5f5;font-family:Helvetica,Arial,sans-serif;">
-<div style="background:#fff;border-radius:12px;padding:32px;max-width:520px;margin:0 auto;box-shadow:0 2px 12px rgba(0,0,0,0.06);">
-  <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
-    <h2 style="margin:0;font-size:20px;color:#1F5C2E;">New Reservation</h2>
-    ${statusBadge}
-  </div>
-  <p style="margin:0 0 20px;font-size:14px;color:#666;">Code: <strong style="color:#1A2419;">${code}</strong></p>
-  <table width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid #eee;">
-    ${rows}
-  </table>
-  ${pending ? `<div style="margin-top:20px;padding:14px 16px;background:#FFF8E8;border-left:3px solid #D9A93A;border-radius:4px;font-size:13px;color:#7A5C1E;">${c.approvalNote}</div>` : ''}
-</div>
+<head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/></head>
+<body style="margin:0;padding:0;background:#f2f2f2;font-family:Helvetica,Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f2f2f2;padding:32px 16px;">
+  <tr><td align="center">
+    <table width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;">
+      <tr><td style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.07);">
+
+        <!-- green top bar -->
+        <table width="100%" cellpadding="0" cellspacing="0"><tr><td style="background:#1F5C2E;height:4px;font-size:0;line-height:0;">&nbsp;</td></tr></table>
+
+        <!-- header -->
+        <table width="100%" cellpadding="0" cellspacing="0">
+          <tr>
+            <td style="padding:28px 28px 0;font-size:20px;font-weight:700;color:#1F5C2E;">${c.title}</td>
+            <td style="padding:28px 28px 0;text-align:right;">${statusBadge}</td>
+          </tr>
+        </table>
+
+        <!-- code -->
+        <table width="100%" cellpadding="0" cellspacing="0">
+          <tr><td style="padding:8px 28px 20px;font-size:13px;color:#888;">Code: <strong style="color:#1A2419;">${code}</strong></td></tr>
+        </table>
+
+        <!-- divider -->
+        <table width="100%" cellpadding="0" cellspacing="0">
+          <tr><td style="padding:0 28px;"><div style="border-top:1px solid #eee;font-size:0;line-height:0;">&nbsp;</div></td></tr>
+        </table>
+
+        <!-- data rows -->
+        <table width="100%" cellpadding="0" cellspacing="0" style="padding:0 28px;">
+          <tr><td>
+            <table width="100%" cellpadding="0" cellspacing="0">
+              ${rows}
+            </table>
+          </td></tr>
+        </table>
+
+        ${pending ? `
+        <!-- approval note -->
+        <table width="100%" cellpadding="0" cellspacing="0">
+          <tr><td style="padding:0 28px 28px;">
+            <div style="margin-top:20px;padding:14px 16px;background:#FFF8E8;border-left:3px solid #D9A93A;border-radius:4px;font-size:13px;color:#7A5C1E;line-height:1.5;">${c.approvalNote}</div>
+          </td></tr>
+        </table>` : '<table width="100%" cellpadding="0" cellspacing="0"><tr><td style="height:28px;">&nbsp;</td></tr></table>'}
+
+      </td></tr>
+    </table>
+  </td></tr>
+</table>
 </body>
 </html>`;
 }
