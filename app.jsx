@@ -225,8 +225,14 @@ function App() {
   // Language picker sheet visibility (shared between hero & account)
   const [langSheetOpen, setLangSheetOpen] = React.useState(false);
 
-  // App state
-  const [tab, setTab] = React.useState('home'); // home | reserve | order | account | track
+  // App state — honour ?tab= deep-link on first load
+  const initialTab = React.useMemo(() => {
+    try {
+      const p = new URLSearchParams(window.location.search).get('tab');
+      return ['home', 'reserve', 'order', 'account'].includes(p) ? p : 'home';
+    } catch { return 'home'; }
+  }, []);
+  const [tab, setTab] = React.useState(initialTab); // home | reserve | order | account | track
   const [cart, setCart] = React.useState([]);
   const [activeOrder, setActiveOrder] = React.useState(null);
   const [activeReservation, setActiveReservation] = React.useState({
