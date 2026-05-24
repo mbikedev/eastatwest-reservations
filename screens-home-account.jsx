@@ -145,8 +145,8 @@ function HomeHero({ theme, t, lang, greet, closing, isOpenToday, onBook, onChang
           WebkitBackdropFilter: 'blur(14px)',
           border: '1px solid rgba(255,255,255,0.18)',
         }}>
-          <img src="logo-crop.png" alt="East at West" width={22} height={22}
-               style={{ display: 'block', objectFit: 'contain', filter: 'brightness(0) invert(1)' }}/>
+          <img src="logo-crop.png" alt="East at West" width={26} height={26}
+               style={{ display: 'block', objectFit: 'contain', borderRadius: '50%' }}/>
           <Wordmark color="#fff" size={11}/>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
