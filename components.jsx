@@ -413,7 +413,7 @@ function PageHeader({ onBack, title, theme, right, sub, dark, hideChrome }) {
 // ─────────────────────────────────────────────────────────────
 // Bottom nav (tab bar)
 // ─────────────────────────────────────────────────────────────
-function BottomNav({ active, onChange, theme, platform, t }) {
+function BottomNav({ active, onChange, theme, platform, t, mobile }) {
   const items = [
     { id: 'home',    icon: 'home',     label: t.tab_home },
     { id: 'reserve', icon: 'calendar', label: t.tab_reserve },
@@ -424,7 +424,7 @@ function BottomNav({ active, onChange, theme, platform, t }) {
   return (
     <div style={{
       position: 'absolute', bottom: 0, left: 0, right: 0,
-      paddingBottom: isIOS ? 28 : 26,
+      paddingBottom: mobile ? 'max(env(safe-area-inset-bottom, 0px), 16px)' : (isIOS ? 28 : 26),
       paddingTop: 8, paddingLeft: 12, paddingRight: 12,
       background: `linear-gradient(180deg, transparent, ${theme.bg} 22%)`,
       pointerEvents: 'none',

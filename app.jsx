@@ -1,5 +1,19 @@
 // Main App — shell, routing, state, tweaks
 
+function useIsMobile() {
+  const [mobile, setMobile] = React.useState(() => window.innerWidth < 520);
+  React.useEffect(() => {
+    const fn = () => setMobile(window.innerWidth < 520);
+    window.addEventListener('resize', fn);
+    return () => window.removeEventListener('resize', fn);
+  }, []);
+  return mobile;
+}
+
+function detectPlatform() {
+  return /iphone|ipad|ipod/i.test(navigator.userAgent) ? 'ios' : 'android';
+}
+
 const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
   "platform": "ios",
   "lang": "en",
@@ -120,6 +134,56 @@ function PhoneShell({ platform, theme, dark, children, bottomNav, sheet, t, tabK
 // pin to viewport. We'll do that via a small style injector here.
 // ─────────────────────────────────────────────────────────────
 
+// ─────────────────────────────────────────────────────────────
+// Mobile shell — full-viewport, no device frame, safe-area aware
+// ─────────────────────────────────────────────────────────────
+function MobileShell({ theme, children, bottomNav, sheet, tabKey }) {
+  const dockRef = React.useRef(null);
+  const [dockEl, setDockEl] = React.useState(null);
+  React.useEffect(() => { setDockEl(dockRef.current); }, []);
+
+  const scrollRef = React.useRef(null);
+  React.useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = 0; }, [tabKey]);
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0,
+      background: theme.bg,
+      fontFamily: '"DM Sans", system-ui, sans-serif',
+      WebkitFontSmoothing: 'antialiased',
+      color: theme.ink,
+    }}>
+      <div ref={scrollRef} style={{
+        position: 'absolute', inset: 0,
+        overflowY: 'auto', overflowX: 'hidden',
+        WebkitOverflowScrolling: 'touch',
+      }}>
+        <div style={{
+          paddingTop: 'env(safe-area-inset-top, 0px)',
+          paddingBottom: 110,
+          minHeight: '100%', position: 'relative',
+        }}>
+          <DockContext.Provider value={dockEl}>
+            {children}
+          </DockContext.Provider>
+        </div>
+      </div>
+      <div style={{
+        position: 'absolute', left: 0, right: 0, bottom: 0,
+        pointerEvents: 'none', zIndex: 40,
+      }}>
+        <div ref={dockRef} style={{ pointerEvents: 'auto' }}/>
+        <div style={{ pointerEvents: 'auto' }}>{bottomNav}</div>
+      </div>
+      {sheet && (
+        <div style={{ position: 'absolute', inset: 0, zIndex: 80 }}>
+          {sheet}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // Inject runtime CSS to convert legacy floating bars to sticky positioning so
 // they pin to the phone's visible bottom inside the scroll container.
 const __APP_CSS = `
@@ -142,6 +206,9 @@ function App() {
   const lang = t.lang;
   const tt = T[lang];
   const platform = t.platform;
+  const isMobile = useIsMobile();
+  const mobilePlatform = React.useMemo(() => detectPlatform(), []);
+  const effectivePlatform = isMobile ? mobilePlatform : platform;
 
   // First-launch language detection: use browser locale once, then persist.
   React.useEffect(() => {
@@ -201,7 +268,7 @@ function App() {
         }}/>;
     }
     if (tab === 'order') {
-      return <TakeawayFlow theme={theme} t={tt} lang={lang} platform={platform}
+      return <TakeawayFlow theme={theme} t={tt} lang={lang} platform={effectivePlatform}
         cart={cart} setCart={setCart}
         onPlaceOrder={(order) => setActiveOrder(order)}
         onTrack={() => { setTrackingOrder(activeOrder); setTab('track'); }}
@@ -235,10 +302,35 @@ function App() {
   };
 
   const bottomNav = (tab !== 'track') ? (
-    <BottomNav theme={theme} platform={platform} t={tt}
+    <BottomNav theme={theme} platform={effectivePlatform} t={tt}
       active={tab === 'track' ? 'home' : tab}
-      onChange={(id) => setTab(id)}/>
+      onChange={(id) => setTab(id)}
+      mobile={isMobile}/>
   ) : null;
+
+  const langSheet = langSheetOpen ? (
+    <LanguageSheet
+      theme={theme}
+      currentLang={lang}
+      onPick={(id) => {
+        setTweak('lang', id);
+        setLangSheetOpen(false);
+        try { localStorage.setItem('eaw_lang_init', '1'); } catch (e) {}
+      }}
+      onClose={() => setLangSheetOpen(false)}
+    />
+  ) : null;
+
+  if (isMobile) {
+    return (
+      <div className="phone-app">
+        <style>{__APP_CSS}</style>
+        <MobileShell theme={theme} dark={t.dark} bottomNav={bottomNav} tabKey={tab} sheet={langSheet}>
+          {renderScreen()}
+        </MobileShell>
+      </div>
+    );
+  }
 
   return (
     <div className="phone-app" style={{
@@ -253,18 +345,7 @@ function App() {
     }}>
       <style>{__APP_CSS}</style>
       <PhoneShell platform={platform} theme={theme} dark={t.dark} t={tt} bottomNav={bottomNav} tabKey={tab}
-        sheet={langSheetOpen ? (
-          <LanguageSheet
-            theme={theme}
-            currentLang={lang}
-            onPick={(id) => {
-              setTweak('lang', id);
-              setLangSheetOpen(false);
-              try { localStorage.setItem('eaw_lang_init', '1'); } catch (e) {}
-            }}
-            onClose={() => setLangSheetOpen(false)}
-          />
-        ) : null}>
+        sheet={langSheet}>
         {renderScreen()}
       </PhoneShell>
 
@@ -282,7 +363,6 @@ function App() {
         <TweakColor label="Theme" value={t.palette}
           options={['eastatwest', 'terracotta', 'olive', 'saffron'].map(k => ({ value: k, label: k }))}
           onChange={(v) => v && v.value && setTweak('palette', v.value)}/>
-        {/* Manual palette pick — color chip alternative */}
         <PaletteSwatchRow palette={t.palette} setPalette={(v) => setTweak('palette', v)}/>
         <TweakSection label="Demo"/>
         <TweakButton label="Jump to Reserve flow" onClick={() => setTab('reserve')}/>
