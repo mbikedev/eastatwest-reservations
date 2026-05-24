@@ -588,73 +588,132 @@ function ActiveReservationCard({ theme, t, lang, res, onView }) {
 // ─────────────────────────────────────────────────────────────
 // Account
 // ─────────────────────────────────────────────────────────────
-function AccountScreen({ theme, t, lang, user, onChangeLanguage, onTheme, onSettings }) {
+function AccountScreen({ theme, t, lang, onChangeLanguage, onTheme, isDark }) {
+  const savedUser = React.useMemo(() => {
+    try { return JSON.parse(localStorage.getItem('eaw_user') || 'null'); } catch { return null; }
+  }, []);
+
+  const name = savedUser?.name || (lang === 'fr' ? 'Invité' : lang === 'nl' ? 'Gast' : 'Guest');
+  const email = savedUser?.email || '';
+  const initials = name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+
+  const [reservations, setReservations] = React.useState(null);
+  React.useEffect(() => {
+    if (!email) { setReservations([]); return; }
+    fetch(`/.netlify/functions/my-reservations?email=${encodeURIComponent(email)}`)
+      .then(r => r.json())
+      .then(data => setReservations(Array.isArray(data) ? data : []))
+      .catch(() => setReservations([]));
+  }, [email]);
+
+  const themeLabel = isDark
+    ? (lang === 'fr' ? 'Sombre' : lang === 'nl' ? 'Donker' : 'Dark')
+    : (lang === 'fr' ? 'Clair' : lang === 'nl' ? 'Licht' : 'Light');
+
   return (
     <div>
       <PageHeader theme={theme} title={t.acc_title}/>
       <div style={{ padding: '0 20px 140px' }}>
+
         {/* Profile card */}
         <Card theme={theme} padding={18} style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
           <div style={{
-            width: 56, height: 56, borderRadius: 28,
+            width: 56, height: 56, borderRadius: 28, flexShrink: 0,
             background: `linear-gradient(135deg, ${theme.primary}, ${theme.olive})`,
             color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontFamily: '"Cormorant Garamond", serif',
-            fontSize: 22, fontWeight: 600,
-          }}>NK</div>
+            fontFamily: '"Cormorant Garamond", serif', fontSize: 22, fontWeight: 600,
+          }}>{initials}</div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{
               fontFamily: '"Cormorant Garamond", serif',
               fontSize: 22, fontWeight: 600, color: theme.ink, lineHeight: 1.1,
-            }}>Nour Karam</div>
-            <div style={{
-              fontFamily: '"DM Sans", sans-serif',
-              fontSize: 13, color: theme.inkMute, marginTop: 3,
-            }}>{t.acc_member} 2023</div>
+            }}>{name}</div>
+            {email ? (
+              <div style={{ fontFamily: '"DM Sans", sans-serif', fontSize: 12, color: theme.inkMute, marginTop: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{email}</div>
+            ) : (
+              <div style={{ fontFamily: '"DM Sans", sans-serif', fontSize: 12, color: theme.inkMute, marginTop: 3 }}>
+                {lang === 'fr' ? 'Faites une réservation pour créer votre profil' : lang === 'nl' ? 'Maak een reservering om uw profiel aan te maken' : 'Make a reservation to set up your profile'}
+              </div>
+            )}
           </div>
-          <Icon name="chevron-right" size={20} color={theme.inkMute}/>
         </Card>
-
-        {/* Past orders */}
-        <SectionStripTitle theme={theme}>{t.acc_orders}</SectionStripTitle>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {MOCK_PAST_ORDERS.map(o => (
-            <PastOrderRow key={o.id} order={o} theme={theme} t={t} lang={lang}/>
-          ))}
-        </div>
 
         {/* Past reservations */}
         <SectionStripTitle theme={theme}>{t.acc_reservations}</SectionStripTitle>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {MOCK_PAST_RESERVATIONS.map(r => (
-            <PastReservationRow key={r.id} res={r} theme={theme} t={t} lang={lang}/>
-          ))}
-        </div>
+        {reservations === null ? (
+          <div style={{ fontFamily: '"DM Sans", sans-serif', fontSize: 13, color: theme.inkMute, padding: '10px 4px' }}>
+            {lang === 'fr' ? 'Chargement…' : lang === 'nl' ? 'Laden…' : 'Loading…'}
+          </div>
+        ) : reservations.length === 0 ? (
+          <div style={{ fontFamily: '"DM Sans", sans-serif', fontSize: 13, color: theme.inkMute, padding: '10px 4px' }}>
+            {lang === 'fr' ? 'Aucune réservation pour le moment.' : lang === 'nl' ? 'Nog geen reserveringen.' : 'No reservations yet.'}
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {reservations.map(r => (
+              <SupabaseReservationRow key={r.invoice_number} res={r} theme={theme} lang={lang}/>
+            ))}
+          </div>
+        )}
 
         {/* Settings */}
         <SectionStripTitle theme={theme}>{t.acc_settings}</SectionStripTitle>
         <Card theme={theme} padding={0} style={{ overflow: 'hidden' }}>
-          <SettingsRow theme={theme} icon="globe" label={t.acc_lang} value={lang === 'fr' ? 'Fran\u00e7ais' : lang === 'nl' ? 'Nederlands' : 'English'} onClick={onChangeLanguage}/>
-          <SettingsRow theme={theme} icon="cards" label={t.acc_payment} value="Visa •••• 4291"/>
-          <SettingsRow theme={theme} icon="pin"   label={t.acc_addresses} value="2"/>
-          <SettingsRow theme={theme} icon="bell"  label={t.acc_notifications} value={lang === 'fr' ? 'Activé' : lang === 'nl' ? 'Aan' : 'On'}/>
-          <SettingsRow theme={theme} icon="sun"   label={lang === 'fr' ? 'Thème' : lang === 'nl' ? 'Thema' : 'Theme'} value={lang === 'fr' ? 'Auto' : 'Auto'} onClick={onTheme} last/>
+          <SettingsRow theme={theme} icon="globe"
+            label={t.acc_lang}
+            value={lang === 'fr' ? 'Français' : lang === 'nl' ? 'Nederlands' : 'English'}
+            onClick={onChangeLanguage}/>
+          <SettingsRow theme={theme} icon="sun"
+            label={lang === 'fr' ? 'Thème' : lang === 'nl' ? 'Thema' : 'Theme'}
+            value={themeLabel}
+            onClick={onTheme}
+            last/>
         </Card>
-
-        <div style={{ marginTop: 14 }}>
-          <button style={{
-            appearance: 'none', border: 'none', cursor: 'pointer',
-            background: 'transparent', color: theme.danger,
-            fontFamily: '"DM Sans", sans-serif',
-            fontSize: 14, fontWeight: 500,
-            display: 'flex', alignItems: 'center', gap: 8,
-            padding: '8px 4px',
-          }}>
-            <Icon name="logout" size={16}/>{t.acc_signout}
-          </button>
-        </div>
       </div>
     </div>
+  );
+}
+
+function SupabaseReservationRow({ res, theme, lang }) {
+  const statusColor = res.status === 'confirmed' ? theme.success : res.status === 'pending' ? theme.accent : theme.inkMute;
+  const statusLabel = res.status === 'confirmed'
+    ? (lang === 'fr' ? 'Confirmée' : lang === 'nl' ? 'Bevestigd' : 'Confirmed')
+    : res.status === 'pending'
+    ? (lang === 'fr' ? 'En attente' : lang === 'nl' ? 'In behandeling' : 'Pending')
+    : (lang === 'fr' ? 'Annulée' : lang === 'nl' ? 'Geannuleerd' : 'Cancelled');
+  const dateStr = res.date
+    ? new Date(res.date + 'T12:00:00').toLocaleDateString(
+        lang === 'fr' ? 'fr-BE' : lang === 'nl' ? 'nl-BE' : 'en-GB',
+        { day: 'numeric', month: 'long', year: 'numeric' }
+      )
+    : res.date;
+  return (
+    <Card theme={theme} padding={14}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{
+          width: 44, height: 44, borderRadius: 12, flexShrink: 0,
+          background: theme.surfaceAlt, color: theme.olive,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <Icon name="calendar" size={20}/>
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontFamily: '"DM Sans", sans-serif', fontSize: 14, fontWeight: 500, color: theme.ink }}>
+            {dateStr} · {res.start_time}{res.end_time ? ` → ${res.end_time}` : ''}
+          </div>
+          <div style={{ fontFamily: '"DM Sans", sans-serif', fontSize: 12, color: theme.inkMute, marginTop: 2 }}>
+            {res.guests} {res.guests === 1
+              ? (lang === 'fr' ? 'personne' : lang === 'nl' ? 'gast' : 'guest')
+              : (lang === 'fr' ? 'personnes' : lang === 'nl' ? 'gasten' : 'guests')
+            } · {res.invoice_number}
+          </div>
+        </div>
+        <div style={{
+          fontFamily: '"DM Sans", sans-serif', fontSize: 11, fontWeight: 600,
+          color: statusColor, textTransform: 'uppercase', letterSpacing: 0.4, flexShrink: 0,
+        }}>{statusLabel}</div>
+      </div>
+    </Card>
   );
 }
 

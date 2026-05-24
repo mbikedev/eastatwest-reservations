@@ -389,7 +389,7 @@ function PageHeader({ onBack, title, theme, right, sub, dark, hideChrome }) {
               <Icon name="arrow-left" size={20}/>
             </button>
           ) : <div style={{ width: 40 }}/>}
-          <LogoChip size={28}/>
+          <LogoChip size={40}/>
           {right || <div style={{ width: 40 }}/>}
         </div>
       )}

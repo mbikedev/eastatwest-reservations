@@ -271,6 +271,11 @@ function App() {
           setActiveReservation({
             date: data.date, time: data.time, party: data.party, name: data.name,
           });
+          try {
+            localStorage.setItem('eaw_user', JSON.stringify({
+              name: data.name, email: data.email, phone: data.phone,
+            }));
+          } catch (_) {}
         }}/>;
     }
     if (tab === 'order') {
@@ -282,7 +287,9 @@ function App() {
     }
     if (tab === 'account') {
       return <AccountScreen theme={theme} t={tt} lang={lang}
-        onChangeLanguage={() => setLangSheetOpen(true)}/>;
+        isDark={t.dark}
+        onChangeLanguage={() => setLangSheetOpen(true)}
+        onTheme={() => setTweak('dark', !t.dark)}/>;
     }
     if (tab === 'track') {
       const order = trackingOrder || activeOrder;
