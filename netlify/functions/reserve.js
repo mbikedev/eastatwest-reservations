@@ -80,7 +80,7 @@ function buildGuestHtml(data, code, lang) {
       guests: 'Guests', date: 'Date', time: 'Time',
       occasion: 'Occasion', notes: 'Allergies & dietary', special: 'Special requests', addr: 'Address',
       footer: "East@West · Bld de l'Empereur 26, 1000 Brussels",
-      cancel: 'To cancel or modify, reply to this email at least 2 hours before or call us at <a href="tel:+32465206024" style="color:#1F5C2E;">+32 465 20 60 24</a>.',
+      cancel: 'For cancellation, please call us at: <a href="tel:+32465206024" style="color:#1F5C2E;font-weight:600;">+32 465 20 60 24</a>',
     },
     fr: {
       title: pending ? 'Réservation en attente' : "C'est réservé !",
@@ -91,7 +91,7 @@ function buildGuestHtml(data, code, lang) {
       guests: 'Personnes', date: 'Date', time: 'Heure',
       occasion: 'Occasion', notes: 'Allergies & régimes', special: 'Demandes spéciales', addr: 'Adresse',
       footer: "East@West · Bld de l'Empereur 26, 1000 Bruxelles",
-      cancel: 'Pour annuler ou modifier, répondez à cet e-mail au moins 2 heures avant ou appelez-nous au <a href="tel:+32465206024" style="color:#1F5C2E;">+32 465 20 60 24</a>.',
+      cancel: 'Pour annuler, veuillez nous appeler au : <a href="tel:+32465206024" style="color:#1F5C2E;font-weight:600;">+32 465 20 60 24</a>',
     },
     nl: {
       title: pending ? 'Reservering in behandeling' : 'Reservering bevestigd!',
@@ -102,7 +102,7 @@ function buildGuestHtml(data, code, lang) {
       guests: 'Gasten', date: 'Datum', time: 'Tijdstip',
       occasion: 'Gelegenheid', notes: 'Allergieën & dieet', special: 'Speciale verzoeken', addr: 'Adres',
       footer: "East@West · Bld de l'Empereur 26, 1000 Brussel",
-      cancel: 'Om te annuleren of te wijzigen, beantwoord deze e-mail minstens 2 uur van tevoren of bel ons op <a href="tel:+32465206024" style="color:#1F5C2E;">+32 465 20 60 24</a>.',
+      cancel: 'Voor annulering, bel ons op: <a href="tel:+32465206024" style="color:#1F5C2E;font-weight:600;">+32 465 20 60 24</a>',
     },
   };
   const s = copy[lang] || copy.en;
