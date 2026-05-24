@@ -1,0 +1,307 @@
+// Netlify Function — POST /.netlify/functions/reserve
+// Saves reservation to Supabase + sends SMTP emails via nodemailer.
+
+const nodemailer = require('nodemailer');
+
+// ── SMTP ──────────────────────────────────────────────────────
+function parsePort(raw) {
+  const n = parseInt(String(raw || '').replace(/\D/g, ''), 10);
+  return isNaN(n) ? 587 : n;
+}
+
+const transporter = nodemailer.createTransport({
+  host: process.env.SMTP_HOST,
+  port: parsePort(process.env.SMTP_PORT),
+  secure: false, // STARTTLS on 587
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
+  },
+  tls: { rejectUnauthorized: false },
+});
+
+// ── Supabase ──────────────────────────────────────────────────
+async function saveToSupabase(row) {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !key) return;
+  const res = await fetch(`${url}/rest/v1/reservations`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      apikey: key,
+      Authorization: `Bearer ${key}`,
+      Prefer: 'return=minimal',
+    },
+    body: JSON.stringify(row),
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Supabase error ${res.status}: ${err}`);
+  }
+}
+
+// ── Email subjects ────────────────────────────────────────────
+function guestSubject(lang, code, pending) {
+  const map = {
+    fr: pending
+      ? `Réservation en attente – East@West (${code})`
+      : `Réservation confirmée – East@West (${code})`,
+    nl: pending
+      ? `Reservering in behandeling – East@West (${code})`
+      : `Reservering bevestigd – East@West (${code})`,
+    en: pending
+      ? `Reservation pending – East@West (${code})`
+      : `Reservation confirmed – East@West (${code})`,
+  };
+  return map[lang] || map.en;
+}
+
+// ── Guest confirmation email ──────────────────────────────────
+function buildGuestHtml(data, code, lang) {
+  const pending = data.party >= 7;
+
+  const copy = {
+    en: {
+      title: pending ? 'Reservation pending' : "You're booked!",
+      sub: pending
+        ? "Your reservation is awaiting manager approval. We'll text you within the hour."
+        : 'We look forward to welcoming you at East@West.',
+      code: 'Confirmation code',
+      guests: 'Guests', date: 'Date', time: 'Time',
+      occasion: 'Occasion', notes: 'Notes', addr: 'Address',
+      footer: "East@West · Bld de l'Empereur 26, 1000 Brussels",
+      cancel: 'To cancel or modify, reply to this email at least 2 hours before.',
+    },
+    fr: {
+      title: pending ? 'Réservation en attente' : "C'est réservé !",
+      sub: pending
+        ? "Votre réservation est en attente d'approbation. Nous vous répondrons dans l'heure."
+        : 'Nous avons hâte de vous accueillir à East@West.',
+      code: 'Code de confirmation',
+      guests: 'Personnes', date: 'Date', time: 'Heure',
+      occasion: 'Occasion', notes: 'Remarques', addr: 'Adresse',
+      footer: "East@West · Bld de l'Empereur 26, 1000 Bruxelles",
+      cancel: "Pour annuler ou modifier, répondez à cet e-mail au moins 2 heures avant.",
+    },
+    nl: {
+      title: pending ? 'Reservering in behandeling' : 'Reservering bevestigd!',
+      sub: pending
+        ? 'Uw reservering wacht op goedkeuring van de manager. We nemen binnen het uur contact met u op.'
+        : 'We kijken ernaar uit u te verwelkomen bij East@West.',
+      code: 'Bevestigingscode',
+      guests: 'Gasten', date: 'Datum', time: 'Tijdstip',
+      occasion: 'Gelegenheid', notes: 'Opmerkingen', addr: 'Adres',
+      footer: "East@West · Bld de l'Empereur 26, 1000 Brussel",
+      cancel: 'Om te annuleren of te wijzigen, beantwoord deze e-mail minstens 2 uur van tevoren.',
+    },
+  };
+  const s = copy[lang] || copy.en;
+
+  const occasionLabels = {
+    en: { none: 'Dinner', birthday: 'Birthday', anniv: 'Anniversary', date: 'Date night', business: 'Business' },
+    fr: { none: 'Dîner', birthday: 'Anniversaire', anniv: 'Anniversaire de mariage', date: 'En amoureux', business: 'Affaires' },
+    nl: { none: 'Diner', birthday: 'Verjaardag', anniv: 'Jubileum', date: 'Romantische avond', business: 'Zakelijk' },
+  };
+  const oLabels = occasionLabels[lang] || occasionLabels.en;
+
+  const accent = pending ? '#D9A93A' : '#1F5C2E';
+
+  const detailRows = [
+    [s.guests, String(data.party)],
+    [s.date, data.date],
+    [s.time, data.endTime ? `${data.time} → ${data.endTime}` : data.time],
+    data.occasion && data.occasion !== 'none' ? [s.occasion, oLabels[data.occasion] || data.occasion] : null,
+    data.notes ? [s.notes, data.notes] : null,
+  ]
+    .filter(Boolean)
+    .map(
+      ([label, value]) => `
+      <tr>
+        <td style="padding:13px 0;border-bottom:1px solid #E0E4D2;font-size:12px;font-weight:600;letter-spacing:0.5px;text-transform:uppercase;color:#7E8B7A;width:120px;vertical-align:top;">${label}</td>
+        <td style="padding:13px 0;border-bottom:1px solid #E0E4D2;font-size:15px;color:#1A2419;font-weight:500;line-height:1.5;">${value}</td>
+      </tr>`
+    )
+    .join('');
+
+  return `<!DOCTYPE html>
+<html lang="${lang}">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>${s.title}</title>
+</head>
+<body style="margin:0;padding:0;background:#EFF1E5;font-family:Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased;">
+<table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background:#EFF1E5;padding:40px 16px;">
+  <tr><td align="center">
+    <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="max-width:560px;">
+
+      <!-- Wordmark -->
+      <tr><td align="center" style="padding:0 0 28px;">
+        <span style="font-family:Georgia,'Times New Roman',serif;font-size:13px;letter-spacing:4px;text-transform:uppercase;color:#1F5C2E;font-weight:normal;">East @ West</span>
+      </td></tr>
+
+      <!-- Card -->
+      <tr><td style="background:#ffffff;border-radius:18px;overflow:hidden;box-shadow:0 4px 28px rgba(26,36,25,0.09);">
+
+        <!-- Top colour bar -->
+        <table width="100%" cellpadding="0" cellspacing="0" role="presentation">
+          <tr><td style="background:${accent};height:5px;font-size:0;line-height:0;">&nbsp;</td></tr>
+        </table>
+
+        <!-- Body -->
+        <table width="100%" cellpadding="0" cellspacing="0" role="presentation">
+          <tr><td style="padding:36px 40px 32px;">
+
+            <h1 style="margin:0 0 10px;font-family:Georgia,'Times New Roman',serif;font-size:30px;font-weight:600;color:#1A2419;letter-spacing:-0.4px;line-height:1.15;">${s.title}</h1>
+            <p style="margin:0 0 26px;font-size:15px;color:#4B5A48;line-height:1.6;">${s.sub}</p>
+
+            <!-- Code block -->
+            <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background:#EFF1E5;border-radius:10px;margin-bottom:28px;">
+              <tr><td style="padding:18px 20px;">
+                <div style="font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:#7E8B7A;margin-bottom:7px;">${s.code}</div>
+                <div style="font-family:Georgia,'Times New Roman',serif;font-size:28px;font-weight:700;color:${accent};letter-spacing:1.5px;">${code}</div>
+              </td></tr>
+            </table>
+
+            <!-- Detail rows -->
+            <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="border-top:1px solid #E0E4D2;">
+              ${detailRows}
+            </table>
+
+          </td></tr>
+
+          <!-- Address footer strip -->
+          <tr><td style="background:#EFF1E5;padding:20px 40px;border-top:1px solid #E0E4D2;">
+            <div style="font-size:11px;font-weight:600;letter-spacing:0.5px;text-transform:uppercase;color:#7E8B7A;margin-bottom:6px;">${s.addr}</div>
+            <div style="font-size:14px;color:#1A2419;font-weight:500;">Bld de l'Empereur 26, 1000 Brussels</div>
+          </td></tr>
+        </table>
+
+      </td></tr>
+
+      <!-- Footer -->
+      <tr><td align="center" style="padding:24px 0 4px;">
+        <p style="margin:0 0 6px;font-size:12px;color:#7E8B7A;">${s.footer}</p>
+        <p style="margin:0;font-size:11px;color:#9DAD99;line-height:1.5;">${s.cancel}</p>
+      </td></tr>
+
+    </table>
+  </td></tr>
+</table>
+</body>
+</html>`;
+}
+
+// ── Restaurant notification email ─────────────────────────────
+function buildRestaurantHtml(data, code) {
+  const pending = data.party >= 7;
+  const statusBadge = pending
+    ? `<span style="background:#D9A93A;color:#1A1410;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:700;">PENDING APPROVAL</span>`
+    : `<span style="background:#1F5C2E;color:#fff;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:700;">CONFIRMED</span>`;
+
+  const rows = [
+    ['Name', data.name],
+    ['Email', data.email],
+    ['Phone', data.phone || '—'],
+    ['Party size', String(data.party)],
+    ['Date', data.date],
+    ['Time', data.endTime ? `${data.time} → ${data.endTime}` : data.time],
+    data.occasion && data.occasion !== 'none' ? ['Occasion', data.occasion] : null,
+    data.notes ? ['Notes', data.notes] : null,
+  ]
+    .filter(Boolean)
+    .map(
+      ([label, value]) => `
+    <tr>
+      <td style="padding:11px 0;border-bottom:1px solid #eee;font-size:12px;color:#999;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;width:110px;vertical-align:top;">${label}</td>
+      <td style="padding:11px 0;border-bottom:1px solid #eee;font-size:14px;color:#222;font-weight:500;line-height:1.5;">${value}</td>
+    </tr>`
+    )
+    .join('');
+
+  return `<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"/></head>
+<body style="margin:0;padding:32px 16px;background:#f5f5f5;font-family:Helvetica,Arial,sans-serif;">
+<div style="background:#fff;border-radius:12px;padding:32px;max-width:520px;margin:0 auto;box-shadow:0 2px 12px rgba(0,0,0,0.06);">
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+    <h2 style="margin:0;font-size:20px;color:#1F5C2E;">New Reservation</h2>
+    ${statusBadge}
+  </div>
+  <p style="margin:0 0 20px;font-size:14px;color:#666;">Code: <strong style="color:#1A2419;">${code}</strong></p>
+  <table width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid #eee;">
+    ${rows}
+  </table>
+  ${pending ? `<div style="margin-top:20px;padding:14px 16px;background:#FFF8E8;border-left:3px solid #D9A93A;border-radius:4px;font-size:13px;color:#7A5C1E;">This party (${data.party} guests) requires manual approval. Please confirm or decline by replying to ${data.email}.</div>` : ''}
+</div>
+</body>
+</html>`;
+}
+
+// ── Handler ───────────────────────────────────────────────────
+const CORS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'Content-Type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Content-Type': 'application/json',
+};
+
+exports.handler = async (event) => {
+  if (event.httpMethod === 'OPTIONS') {
+    return { statusCode: 200, headers: CORS, body: '' };
+  }
+  if (event.httpMethod !== 'POST') {
+    return { statusCode: 405, headers: CORS, body: JSON.stringify({ error: 'Method not allowed' }) };
+  }
+
+  try {
+    const { data, lang = 'en' } = JSON.parse(event.body || '{}');
+
+    if (!data || !data.name || !data.email || !data.date || !data.time) {
+      return {
+        statusCode: 400, headers: CORS,
+        body: JSON.stringify({ error: 'Missing required fields: name, email, date, time' }),
+      };
+    }
+
+    const code = 'EW-' + String(Math.floor(Math.random() * 9000) + 1000);
+    const pending = data.party >= 7;
+    const from = `"East@West" <${process.env.SMTP_FROM_EMAIL}>`;
+
+    // Supabase — non-fatal if it fails
+    saveToSupabase({
+      code, status: pending ? 'pending' : 'confirmed',
+      name: data.name, email: data.email, phone: data.phone || null,
+      party: data.party, date: data.date,
+      time: data.time, end_time: data.endTime || null,
+      occasion: data.occasion || null, notes: data.notes || null,
+    }).catch((e) => console.warn('Supabase:', e.message));
+
+    // Send both emails in parallel
+    await Promise.all([
+      transporter.sendMail({
+        from, to: data.email,
+        subject: guestSubject(lang, code, pending),
+        html: buildGuestHtml(data, code, lang),
+      }),
+      transporter.sendMail({
+        from, to: process.env.SMTP_FROM_EMAIL,
+        replyTo: data.email,
+        subject: `${pending ? '[PENDING] ' : '[NEW] '}${code} · ${data.party} guests · ${data.date}`,
+        html: buildRestaurantHtml(data, code),
+      }),
+    ]);
+
+    return {
+      statusCode: 200, headers: CORS,
+      body: JSON.stringify({ success: true, code, pending }),
+    };
+  } catch (err) {
+    console.error('reserve function error:', err);
+    return {
+      statusCode: 500, headers: CORS,
+      body: JSON.stringify({ success: false, error: 'Could not process reservation. Please try again.' }),
+    };
+  }
+};

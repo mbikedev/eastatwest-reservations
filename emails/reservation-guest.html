@@ -1,0 +1,40 @@
+<!--
+  Reference template — not used directly by the function.
+  The function builds the email inline in netlify/functions/reserve.js.
+  This file is kept here for reference / Netlify Emails plugin config.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>East@West — Reservation Confirmed</title>
+</head>
+<body style="margin:0;padding:0;background:#EFF1E5;font-family:Helvetica,Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#EFF1E5;padding:40px 16px;">
+  <tr><td align="center">
+    <table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;">
+      <tr><td align="center" style="padding:0 0 28px;">
+        <span style="font-family:Georgia,serif;font-size:13px;letter-spacing:4px;text-transform:uppercase;color:#1F5C2E;">East @ West</span>
+      </td></tr>
+      <tr><td style="background:#fff;border-radius:18px;overflow:hidden;">
+        <table width="100%" cellpadding="0" cellspacing="0">
+          <tr><td style="background:#1F5C2E;height:5px;">&nbsp;</td></tr>
+          <tr><td style="padding:36px 40px 32px;">
+            <h1 style="margin:0 0 10px;font-family:Georgia,serif;font-size:30px;color:#1A2419;">You're booked!</h1>
+            <p style="margin:0 0 26px;font-size:15px;color:#4B5A48;">We look forward to welcoming you at East@West.</p>
+            <!-- Confirmation code, guest details injected dynamically by the function -->
+          </td></tr>
+          <tr><td style="background:#EFF1E5;padding:20px 40px;border-top:1px solid #E0E4D2;">
+            <div style="font-size:14px;color:#1A2419;">Bld de l'Empereur 26, 1000 Brussels</div>
+          </td></tr>
+        </table>
+      </td></tr>
+      <tr><td align="center" style="padding:24px 0 0;">
+        <p style="margin:0;font-size:12px;color:#7E8B7A;">East@West · Bld de l'Empereur 26, 1000 Brussels</p>
+      </td></tr>
+    </table>
+  </td></tr>
+</table>
+</body>
+</html>

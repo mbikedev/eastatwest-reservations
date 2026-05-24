@@ -624,7 +624,7 @@ function StepDetails({ theme, t, data, onChange, onNext, lang }) {
 // ─────────────────────────────────────────────────────────────
 const REVIEW_HERO_IMG = 'img/chefs-dish.webp';
 
-function StepReview({ theme, t, data, onConfirm, lang }) {
+function StepReview({ theme, t, data, onConfirm, lang, loading, error }) {
   const occasionLabel = {
     none: t.res_occasion_none, birthday: t.res_occasion_birthday,
     anniv: t.res_occasion_anniv, business: t.res_occasion_business, date: t.res_occasion_date,
@@ -754,8 +754,19 @@ function StepReview({ theme, t, data, onConfirm, lang }) {
         </div>
 
         <div style={{ marginTop: 22 }}>
-          <PrimaryButton theme={theme} onClick={onConfirm}>{t.res_confirm}</PrimaryButton>
+          <PrimaryButton theme={theme} onClick={loading ? null : onConfirm} disabled={loading}>
+            {loading
+              ? (lang === 'fr' ? 'Envoi en cours…' : lang === 'nl' ? 'Bezig met verzenden…' : 'Sending…')
+              : t.res_confirm}
+          </PrimaryButton>
         </div>
+        {error && (
+          <div style={{
+            marginTop: 10, padding: '10px 14px', borderRadius: 10,
+            background: `${theme.danger}18`, color: theme.danger,
+            fontFamily: '"DM Sans", sans-serif', fontSize: 13, lineHeight: 1.5,
+          }}>{error}</div>
+        )}
         <div style={{
           marginTop: 12, textAlign: 'center',
           fontFamily: '"DM Sans", sans-serif',
@@ -805,9 +816,8 @@ function ReviewRow({ theme, label, value, multiline, icon, last }) {
 // ─────────────────────────────────────────────────────────────
 // Confirmation screen
 // ─────────────────────────────────────────────────────────────
-function ReserveConfirmed({ theme, t, data, onDone, lang }) {
-  const code = 'EW-' + String(Math.floor(Math.random() * 9000) + 1000);
-  const codeRef = React.useRef(code);
+function ReserveConfirmed({ theme, t, data, onDone, lang, code }) {
+  const codeRef = React.useRef(code || ('EW-' + String(Math.floor(Math.random() * 9000) + 1000)));
   const pending = data.party >= 7;
   const accent = pending ? theme.accent : theme.primary;
   return (
@@ -952,9 +962,37 @@ function ReserveFlow({ theme, t, lang, onExit, onConfirmed, initial }) {
     name: '', phone: '', email: '', occasion: 'none', notes: '',
   });
   const set = (patch) => setData(d => ({ ...d, ...patch }));
+  const [confirmLoading, setConfirmLoading] = React.useState(false);
+  const [confirmError, setConfirmError] = React.useState(null);
+  const [confirmCode, setConfirmCode] = React.useState(null);
+
+  const handleConfirm = async () => {
+    setConfirmLoading(true);
+    setConfirmError(null);
+    try {
+      const payload = {
+        ...data,
+        date: data.date ? data.date.toISOString().slice(0, 10) : null,
+      };
+      const res = await fetch('/.netlify/functions/reserve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data: payload, lang }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) throw new Error(json.error || 'Request failed');
+      setConfirmCode(json.code);
+      onConfirmed({ ...data, pending: data.party >= 7 });
+      setStep(5);
+    } catch (err) {
+      setConfirmError(err.message || 'Could not send reservation. Please try again.');
+    } finally {
+      setConfirmLoading(false);
+    }
+  };
 
   if (step === 5) {
-    return <ReserveConfirmed theme={theme} t={t} lang={lang} data={data} onDone={onExit}/>;
+    return <ReserveConfirmed theme={theme} t={t} lang={lang} data={data} code={confirmCode} onDone={onExit}/>;
   }
 
   return (
@@ -986,7 +1024,12 @@ function ReserveFlow({ theme, t, lang, onExit, onConfirmed, initial }) {
       {step === 1 && <StepDate theme={theme} t={t} lang={lang} value={data.date} onChange={(v) => set({ date: v })} onNext={() => setStep(2)}/>}
       {step === 2 && <StepTime theme={theme} t={t} lang={lang} date={data.date} value={data.time} endValue={data.endTime} mealId={data.mealId} onChange={(v) => set({ time: v })} onEndChange={(v) => set({ endTime: v })} onMeal={(m) => set({ mealId: m, time: null, endTime: null })} onNext={() => setStep(3)}/>}
       {step === 3 && <StepDetails theme={theme} t={t} lang={lang} data={data} onChange={set} onNext={() => setStep(4)}/>}
-      {step === 4 && <StepReview theme={theme} t={t} lang={lang} data={data} onConfirm={() => { onConfirmed({ ...data, pending: data.party >= 7 }); setStep(5); }}/>}
+      {step === 4 && (
+        <StepReview theme={theme} t={t} lang={lang} data={data}
+          onConfirm={handleConfirm}
+          loading={confirmLoading}
+          error={confirmError}/>
+      )}
     </div>
   );
 }
