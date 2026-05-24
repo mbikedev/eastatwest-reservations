@@ -26,6 +26,7 @@ async function saveToSupabase(row) {
   // Service role key bypasses RLS — required for server-side inserts.
   // Falls back to anon key only if service role key is not set.
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  console.log('Supabase key type:', process.env.SUPABASE_SERVICE_ROLE_KEY ? 'service_role' : 'anon');
   if (!url || !key) return;
   const res = await fetch(`${url}/rest/v1/reservations`, {
     method: 'POST',
@@ -299,20 +300,26 @@ exports.handler = async (event) => {
     const pending = data.party >= 7;
     const from = `"East@West" <${process.env.SMTP_FROM_EMAIL}>`;
 
-    // Supabase — non-fatal if it fails
-    saveToSupabase({
-      invoice_number: code,
-      status: pending ? 'pending' : 'confirmed',
-      name: data.name,
-      email: data.email,
-      phone: data.phone || '',
-      guests: data.party,
-      date: data.date,
-      start_time: data.time,
-      end_time: data.endTime || data.time,
-      special_requests: [data.notes, data.specialRequests].filter(Boolean).join('\n\n') || null,
-      language: lang,
-    }).catch((e) => console.warn('Supabase:', e.message));
+    // Supabase save — await and capture result for diagnostics
+    let supabaseError = null;
+    try {
+      await saveToSupabase({
+        invoice_number: code,
+        status: pending ? 'pending' : 'confirmed',
+        name: data.name,
+        email: data.email,
+        phone: data.phone || '',
+        guests: data.party,
+        date: data.date,
+        start_time: data.time,
+        end_time: data.endTime || data.time,
+        special_requests: [data.notes, data.specialRequests].filter(Boolean).join('\n\n') || null,
+        language: lang,
+      });
+    } catch (e) {
+      supabaseError = e.message;
+      console.error('Supabase save failed:', e.message);
+    }
 
     // Send both emails in parallel
     await Promise.all([
@@ -331,7 +338,7 @@ exports.handler = async (event) => {
 
     return {
       statusCode: 200, headers: CORS,
-      body: JSON.stringify({ success: true, code, pending }),
+      body: JSON.stringify({ success: true, code, pending, supabaseError }),
     };
   } catch (err) {
     console.error('reserve function error:', err);
