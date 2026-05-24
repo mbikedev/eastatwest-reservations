@@ -69,7 +69,7 @@ function buildGuestHtml(data, code, lang) {
         : 'We look forward to welcoming you at East@West.',
       code: 'Confirmation code',
       guests: 'Guests', date: 'Date', time: 'Time',
-      occasion: 'Occasion', notes: 'Notes', addr: 'Address',
+      occasion: 'Occasion', notes: 'Allergies & dietary', special: 'Special requests', addr: 'Address',
       footer: "East@West · Bld de l'Empereur 26, 1000 Brussels",
       cancel: 'To cancel or modify, reply to this email at least 2 hours before.',
     },
@@ -80,7 +80,7 @@ function buildGuestHtml(data, code, lang) {
         : 'Nous avons hâte de vous accueillir à East@West.',
       code: 'Code de confirmation',
       guests: 'Personnes', date: 'Date', time: 'Heure',
-      occasion: 'Occasion', notes: 'Remarques', addr: 'Adresse',
+      occasion: 'Occasion', notes: 'Allergies & régimes', special: 'Demandes spéciales', addr: 'Adresse',
       footer: "East@West · Bld de l'Empereur 26, 1000 Bruxelles",
       cancel: "Pour annuler ou modifier, répondez à cet e-mail au moins 2 heures avant.",
     },
@@ -91,7 +91,7 @@ function buildGuestHtml(data, code, lang) {
         : 'We kijken ernaar uit u te verwelkomen bij East@West.',
       code: 'Bevestigingscode',
       guests: 'Gasten', date: 'Datum', time: 'Tijdstip',
-      occasion: 'Gelegenheid', notes: 'Opmerkingen', addr: 'Adres',
+      occasion: 'Gelegenheid', notes: 'Allergieën & dieet', special: 'Speciale verzoeken', addr: 'Adres',
       footer: "East@West · Bld de l'Empereur 26, 1000 Brussel",
       cancel: 'Om te annuleren of te wijzigen, beantwoord deze e-mail minstens 2 uur van tevoren.',
     },
@@ -113,6 +113,7 @@ function buildGuestHtml(data, code, lang) {
     [s.time, data.endTime ? `${data.time} → ${data.endTime}` : data.time],
     data.occasion && data.occasion !== 'none' ? [s.occasion, oLabels[data.occasion] || data.occasion] : null,
     data.notes ? [s.notes, data.notes] : null,
+    data.specialRequests ? [s.special, data.specialRequests] : null,
   ]
     .filter(Boolean)
     .map(
@@ -209,6 +210,7 @@ function buildRestaurantHtml(data, code) {
     ['Time', data.endTime ? `${data.time} → ${data.endTime}` : data.time],
     data.occasion && data.occasion !== 'none' ? ['Occasion', data.occasion] : null,
     data.notes ? ['Notes', data.notes] : null,
+    data.specialRequests ? ['Special requests', data.specialRequests] : null,
   ]
     .filter(Boolean)
     .map(
@@ -276,6 +278,7 @@ exports.handler = async (event) => {
       party: data.party, date: data.date,
       time: data.time, end_time: data.endTime || null,
       occasion: data.occasion || null, notes: data.notes || null,
+      special_requests: data.specialRequests || null,
     }).catch((e) => console.warn('Supabase:', e.message));
 
     // Send both emails in parallel

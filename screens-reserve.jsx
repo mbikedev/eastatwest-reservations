@@ -611,6 +611,9 @@ function StepDetails({ theme, t, data, onChange, onNext, lang }) {
         </div>
         <Field theme={theme} label={t.res_notes} value={data.notes} onChange={(v) => onChange({ notes: v })}
                placeholder={t.res_notes_ph} multiline/>
+        <Field theme={theme} label={t.res_special} value={data.specialRequests}
+               onChange={(v) => onChange({ specialRequests: v })}
+               placeholder={t.res_special_ph} multiline icon="sparkle"/>
         <div style={{ marginTop: 12 }}>
           <PrimaryButton theme={theme} onClick={submit}>{t.next}</PrimaryButton>
         </div>
@@ -721,7 +724,10 @@ function StepReview({ theme, t, data, onConfirm, lang, loading, error }) {
               <ReviewRow theme={theme} icon={occasionIcon} label={t.res_occasion} value={occasionLabel}/>
             )}
             {data.notes && (
-              <ReviewRow theme={theme} icon="leaf" label={t.res_notes} value={data.notes} multiline last/>
+              <ReviewRow theme={theme} icon="leaf" label={t.res_notes} value={data.notes} multiline last={!data.specialRequests}/>
+            )}
+            {data.specialRequests && (
+              <ReviewRow theme={theme} icon="sparkle" label={t.res_special} value={data.specialRequests} multiline last/>
             )}
           </div>
         </div>
@@ -959,7 +965,7 @@ function ReserveFlow({ theme, t, lang, onExit, onConfirmed, initial }) {
   const [step, setStep] = React.useState(0);
   const [data, setData] = React.useState(initial || {
     party: 2, date: null, time: null, endTime: null, mealId: 'dinner',
-    name: '', phone: '', email: '', occasion: 'none', notes: '',
+    name: '', phone: '', email: '', occasion: 'none', notes: '', specialRequests: '',
   });
   const set = (patch) => setData(d => ({ ...d, ...patch }));
   const [confirmLoading, setConfirmLoading] = React.useState(false);
