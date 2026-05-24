@@ -465,19 +465,20 @@ function AboutLocationBlock({ theme, t, lang }) {
           display: 'grid', gridTemplateColumns: '1fr 1fr',
           borderTop: `1px solid ${theme.line}`,
         }}>
-          <AboutAction theme={theme} icon="pin" label={t.res_directions} />
-          <AboutAction theme={theme} icon="phone" label={lang === 'fr' ? 'Appeler' : lang === 'nl' ? 'Bellen' : 'Call us'} divider />
+          <AboutAction theme={theme} icon="pin" label={t.res_directions} href="https://maps.google.com/?q=Bld+de+l'Empereur+26,+1000+Brussels" />
+          <AboutAction theme={theme} icon="phone" label={lang === 'fr' ? 'Appeler' : lang === 'nl' ? 'Bellen' : 'Call us'} href="tel:+32465206024" divider />
         </div>
       </Card>
     </div>
   );
 }
 
-function AboutAction({ theme, icon, label, divider }) {
+function AboutAction({ theme, icon, label, divider, href }) {
+  const Tag = href ? 'a' : 'button';
   return (
-    <button style={{
+    <Tag href={href} target={href ? '_blank' : undefined} rel={href ? 'noopener noreferrer' : undefined} style={{
       appearance: 'none', border: 'none', cursor: 'pointer',
-      background: 'transparent',
+      background: 'transparent', textDecoration: 'none',
       padding: '14px 12px',
       display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
       color: theme.ink,
@@ -487,7 +488,7 @@ function AboutAction({ theme, icon, label, divider }) {
     }}>
       <Icon name={icon} size={16} color={theme.primary}/>
       {label}
-    </button>
+    </Tag>
   );
 }
 
