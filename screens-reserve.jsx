@@ -362,20 +362,40 @@ function fmtDuration(hours, lang) {
   return `${m} ${mLabel}`;
 }
 
-function StepTime({ theme, t, date, value, endValue, mealId, onChange, onEndChange, onMeal, onNext, lang }) {
+const CAPACITY = 22;
+
+function StepTime({ theme, t, date, value, endValue, mealId, onChange, onEndChange, onMeal, onNext, lang, availability, availLoading, party }) {
   const slots = timeSlots(date.toISOString().slice(0,10), mealId);
   const isSat = date.getDay() === 6;
+  const [capacityWarning, setCapacityWarning] = React.useState(false);
+
   // Auto-switch to dinner on Saturdays (no lunch service)
   React.useEffect(() => {
     if (isSat && mealId === 'lunch') onMeal('dinner');
   }, [isSat, mealId]);
 
+  const seatsLeft = (slotTime) => {
+    if (!availability) return CAPACITY;
+    return availability[slotTime] ?? CAPACITY;
+  };
+
   const handlePick = (s) => {
     if (!s.available) return;
+    if (seatsLeft(s.time) < party) return;
+    setCapacityWarning(false);
     if (!value) { onChange(s.time); onEndChange(null); return; }
     if (value && !endValue) {
-      if (s.time > value) { onEndChange(s.time); }
-      else { onChange(s.time); onEndChange(null); }
+      if (s.time > value) {
+        // Ensure every 30-min slot in [start, end) has enough seats
+        const rangeSlots = slots.filter(sl => sl.time >= value && sl.time < s.time);
+        const minLeft = rangeSlots.length > 0
+          ? Math.min(...rangeSlots.map(sl => seatsLeft(sl.time)))
+          : seatsLeft(value);
+        if (minLeft < party) { setCapacityWarning(true); return; }
+        onEndChange(s.time);
+      } else {
+        onChange(s.time); onEndChange(null);
+      }
       return;
     }
     onChange(s.time); onEndChange(null);
@@ -531,22 +551,35 @@ function StepTime({ theme, t, date, value, endValue, mealId, onChange, onEndChan
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
           {slots.map(s => {
             const dis = !s.available;
+            const left = seatsLeft(s.time);
+            const capDis = left < party;
+            const isDisabled = dis || capDis;
             const isStart = s.time === value;
             const isEnd = s.time === endValue;
             const inRng = inRange(s.time);
             const on = inRng;
-            const isEndpoint = (isStart || isEnd) && !dis;
+            const isEndpoint = (isStart || isEnd) && !isDisabled;
+            const seatColor = capDis
+              ? '#ef4444'
+              : left <= 5 ? '#f59e0b'
+              : on ? 'rgba(255,255,255,0.6)' : theme.inkMute;
+            const seatLabel = availLoading
+              ? '…'
+              : left === 0
+              ? (lang === 'fr' ? 'Complet' : lang === 'nl' ? 'Vol' : 'Full')
+              : left < CAPACITY
+              ? `${left} ${lang === 'fr' ? 'pl.' : lang === 'nl' ? 'vrij' : 'left'}`
+              : '';
             return (
-              <button key={s.time} onClick={dis ? null : () => handlePick(s)} style={{
+              <button key={s.time} onClick={isDisabled ? null : () => handlePick(s)} style={{
                 appearance: 'none', border: 'none',
-                cursor: dis ? 'default' : 'pointer',
-                padding: '14px 0',
+                cursor: isDisabled ? 'default' : 'pointer',
+                padding: '11px 0 9px',
                 background: on ? theme.primary : theme.surface,
-                color: dis ? theme.inkMute : (on ? theme.primaryInk : theme.ink),
+                color: isDisabled ? theme.inkMute : (on ? theme.primaryInk : theme.ink),
                 borderRadius: 12,
                 fontFamily: '"DM Sans", sans-serif',
-                fontSize: 16, fontWeight: 600,
-                opacity: dis ? 0.4 : 1,
+                opacity: dis ? 0.4 : capDis ? 0.55 : 1,
                 textDecoration: dis ? 'line-through' : 'none',
                 fontVariantNumeric: 'tabular-nums',
                 position: 'relative',
@@ -554,10 +587,31 @@ function StepTime({ theme, t, date, value, endValue, mealId, onChange, onEndChan
                 outlineOffset: isEndpoint ? -2 : 0,
                 boxShadow: on ? `0 4px 12px ${theme.primary}25` : 'none',
                 transition: 'all 180ms ease',
-              }}>{s.time}</button>
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
+              }}>
+                <span style={{ fontSize: 16, fontWeight: 600 }}>{s.time}</span>
+                {!dis && seatLabel ? (
+                  <span style={{ fontSize: 9, fontWeight: 700, color: seatColor, letterSpacing: 0.3, lineHeight: 1, textTransform: 'uppercase' }}>
+                    {seatLabel}
+                  </span>
+                ) : <span style={{ fontSize: 9, lineHeight: 1 }}>&nbsp;</span>}
+              </button>
             );
           })}
         </div>
+        {capacityWarning && (
+          <div style={{
+            marginTop: 12, padding: '10px 14px', borderRadius: 10,
+            background: '#FEF3C7',
+            fontFamily: '"DM Sans", sans-serif', fontSize: 13, color: '#92400E', lineHeight: 1.4,
+          }}>
+            {lang === 'fr'
+              ? `Pas assez de places disponibles pour ${party} personnes sur toute la durée choisie.`
+              : lang === 'nl'
+              ? `Onvoldoende plaatsen voor ${party} gasten gedurende de volledige geselecteerde periode.`
+              : `Not enough seats for ${party} guests across the full selected range.`}
+          </div>
+        )}
         <div style={{ marginTop: 28 }}>
           <PrimaryButton theme={theme} disabled={!hasRange} onClick={onNext}>{t.next}</PrimaryButton>
         </div>
@@ -971,6 +1025,21 @@ function ReserveFlow({ theme, t, lang, onExit, onConfirmed, initial }) {
   const [confirmLoading, setConfirmLoading] = React.useState(false);
   const [confirmError, setConfirmError] = React.useState(null);
   const [confirmCode, setConfirmCode] = React.useState(null);
+  const [availability, setAvailability] = React.useState(null);
+  const [availLoading, setAvailLoading] = React.useState(false);
+
+  // Fetch real-time seat availability whenever the user enters the time step
+  React.useEffect(() => {
+    if (step !== 2 || !data.date) return;
+    const dateStr = data.date.toISOString().slice(0, 10);
+    setAvailLoading(true);
+    setAvailability(null);
+    fetch(`/.netlify/functions/availability?date=${dateStr}`)
+      .then(r => r.json())
+      .then(json => setAvailability(json.available || null))
+      .catch(() => setAvailability(null))
+      .finally(() => setAvailLoading(false));
+  }, [step, data.date]);
 
   const handleConfirm = async () => {
     setConfirmLoading(true);
@@ -986,6 +1055,15 @@ function ReserveFlow({ theme, t, lang, onExit, onConfirmed, initial }) {
         body: JSON.stringify({ data: payload, lang }),
       });
       const json = await res.json();
+      if (json.error === 'overbooking') {
+        throw new Error(
+          lang === 'fr'
+            ? `Désolé, seulement ${json.available} place${json.available === 1 ? '' : 's'} disponible${json.available === 1 ? '' : 's'} à ${json.slot}.`
+            : lang === 'nl'
+            ? `Sorry, slechts ${json.available} plaats${json.available === 1 ? '' : 'en'} beschikbaar om ${json.slot}.`
+            : `Sorry, only ${json.available} seat${json.available === 1 ? '' : 's'} available at ${json.slot}. Please go back and choose a different time.`
+        );
+      }
       if (!res.ok || !json.success) throw new Error(json.error || 'Request failed');
       setConfirmCode(json.code);
       onConfirmed({ ...data, pending: data.party >= 7 });
@@ -1028,7 +1106,7 @@ function ReserveFlow({ theme, t, lang, onExit, onConfirmed, initial }) {
       </div>
       {step === 0 && <StepParty theme={theme} t={t} value={data.party} onChange={(v) => set({ party: v })} onNext={() => setStep(1)}/>}
       {step === 1 && <StepDate theme={theme} t={t} lang={lang} value={data.date} onChange={(v) => set({ date: v })} onNext={() => setStep(2)}/>}
-      {step === 2 && <StepTime theme={theme} t={t} lang={lang} date={data.date} value={data.time} endValue={data.endTime} mealId={data.mealId} onChange={(v) => set({ time: v })} onEndChange={(v) => set({ endTime: v })} onMeal={(m) => set({ mealId: m, time: null, endTime: null })} onNext={() => setStep(3)}/>}
+      {step === 2 && <StepTime theme={theme} t={t} lang={lang} date={data.date} value={data.time} endValue={data.endTime} mealId={data.mealId} availability={availability} availLoading={availLoading} party={data.party} onChange={(v) => set({ time: v })} onEndChange={(v) => set({ endTime: v })} onMeal={(m) => set({ mealId: m, time: null, endTime: null })} onNext={() => setStep(3)}/>}
       {step === 3 && <StepDetails theme={theme} t={t} lang={lang} data={data} onChange={set} onNext={() => setStep(4)}/>}
       {step === 4 && (
         <StepReview theme={theme} t={t} lang={lang} data={data}

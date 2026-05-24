@@ -312,6 +312,49 @@ function buildRestaurantHtml(data, code, lang) {
 </html>`;
 }
 
+// ── Capacity guard ────────────────────────────────────────────
+const CAPACITY = 22;
+
+// Walks 30-min slots from startTime up to (not including) endTime and
+// returns the first slot where adding `guests` would exceed CAPACITY,
+// or null if the reservation fits.
+async function checkCapacity(date, startTime, endTime, guests) {
+  const url = (process.env.NEXT_PUBLIC_SUPABASE_URL || '').replace(/\/rest\/v1\/?$/, '').replace(/\/$/, '');
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !key) return null; // fail open if misconfigured
+
+  try {
+    const res = await fetch(
+      `${url}/rest/v1/reservations?date=eq.${date}&status=neq.cancelled&select=start_time,end_time,guests`,
+      { headers: { apikey: key, Authorization: `Bearer ${key}` } }
+    );
+    if (!res.ok) return null;
+    const reservations = await res.json();
+
+    const slots = [];
+    let cur = startTime;
+    while (cur < endTime) {
+      slots.push(cur);
+      const [h, m] = cur.split(':').map(Number);
+      cur = m === 30
+        ? `${String(h + 1).padStart(2, '0')}:00`
+        : `${String(h).padStart(2, '0')}:30`;
+    }
+
+    for (const slot of slots) {
+      const booked = reservations
+        .filter(r => r.start_time <= slot && slot < r.end_time)
+        .reduce((sum, r) => sum + (Number(r.guests) || 0), 0);
+      if (booked + guests > CAPACITY) {
+        return { slot, booked, available: CAPACITY - booked };
+      }
+    }
+    return null;
+  } catch (_) {
+    return null; // fail open on network errors
+  }
+}
+
 // ── Handler ───────────────────────────────────────────────────
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -335,6 +378,15 @@ exports.handler = async (event) => {
       return {
         statusCode: 400, headers: CORS,
         body: JSON.stringify({ error: 'Missing required fields: name, email, date, time, endTime' }),
+      };
+    }
+
+    // Server-side overbooking guard
+    const overbook = await checkCapacity(data.date, data.time, data.endTime, data.party);
+    if (overbook) {
+      return {
+        statusCode: 409, headers: CORS,
+        body: JSON.stringify({ error: 'overbooking', available: overbook.available, slot: overbook.slot }),
       };
     }
 
