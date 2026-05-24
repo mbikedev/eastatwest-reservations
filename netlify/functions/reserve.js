@@ -54,14 +54,14 @@ async function saveToSupabase(row) {
 function guestSubject(lang, code, pending) {
   const map = {
     fr: pending
-      ? `Réservation en attente – East@West (${code})`
-      : `Réservation confirmée – East@West (${code})`,
+      ? `Réservation en attente – East at West (${code})`
+      : `Réservation confirmée – East at West (${code})`,
     nl: pending
-      ? `Reservering in behandeling – East@West (${code})`
-      : `Reservering bevestigd – East@West (${code})`,
+      ? `Reservering in behandeling – East at West (${code})`
+      : `Reservering bevestigd – East at West (${code})`,
     en: pending
-      ? `Reservation pending – East@West (${code})`
-      : `Reservation confirmed – East@West (${code})`,
+      ? `Reservation pending – East at West (${code})`
+      : `Reservation confirmed – East at West (${code})`,
   };
   return map[lang] || map.en;
 }
@@ -75,33 +75,33 @@ function buildGuestHtml(data, code, lang) {
       title: pending ? 'Reservation pending' : "You're booked!",
       sub: pending
         ? "Your reservation is awaiting manager approval. We'll text you within the hour."
-        : 'We look forward to welcoming you at East@West.',
+        : 'We look forward to welcoming you at East at West.',
       code: 'Confirmation code',
       guests: 'Guests', date: 'Date', time: 'Time',
       occasion: 'Occasion', notes: 'Allergies & dietary', special: 'Special requests', addr: 'Address',
-      footer: "East@West · Bld de l'Empereur 26, 1000 Brussels",
+      footer: "East at West · Bld de l'Empereur 26, 1000 Brussels",
       cancel: 'For cancellation, please call us at: <a href="tel:+32465206024" style="color:#1F5C2E;font-weight:600;">+32 465 20 60 24</a>',
     },
     fr: {
       title: pending ? 'Réservation en attente' : "C'est réservé !",
       sub: pending
         ? "Votre réservation est en attente d'approbation. Nous vous répondrons dans l'heure."
-        : 'Nous avons hâte de vous accueillir à East@West.',
+        : 'Nous avons hâte de vous accueillir à East at West.',
       code: 'Code de confirmation',
       guests: 'Personnes', date: 'Date', time: 'Heure',
       occasion: 'Occasion', notes: 'Allergies & régimes', special: 'Demandes spéciales', addr: 'Adresse',
-      footer: "East@West · Bld de l'Empereur 26, 1000 Bruxelles",
+      footer: "East at West · Bld de l'Empereur 26, 1000 Bruxelles",
       cancel: 'Pour annuler, veuillez nous appeler au : <a href="tel:+32465206024" style="color:#1F5C2E;font-weight:600;">+32 465 20 60 24</a>',
     },
     nl: {
       title: pending ? 'Reservering in behandeling' : 'Reservering bevestigd!',
       sub: pending
         ? 'Uw reservering wacht op goedkeuring van de manager. We nemen binnen het uur contact met u op.'
-        : 'We kijken ernaar uit u te verwelkomen bij East@West.',
+        : 'We kijken ernaar uit u te verwelkomen bij East at West.',
       code: 'Bevestigingscode',
       guests: 'Gasten', date: 'Datum', time: 'Tijdstip',
       occasion: 'Gelegenheid', notes: 'Allergieën & dieet', special: 'Speciale verzoeken', addr: 'Adres',
-      footer: "East@West · Bld de l'Empereur 26, 1000 Brussel",
+      footer: "East at West · Bld de l'Empereur 26, 1000 Brussel",
       cancel: 'Voor annulering, bel ons op: <a href="tel:+32465206024" style="color:#1F5C2E;font-weight:600;">+32 465 20 60 24</a>',
     },
   };
@@ -148,7 +148,7 @@ function buildGuestHtml(data, code, lang) {
 
       <!-- Wordmark -->
       <tr><td align="center" style="padding:0 0 28px;">
-        <span style="font-family:Georgia,'Times New Roman',serif;font-size:13px;letter-spacing:4px;text-transform:uppercase;color:#1F5C2E;font-weight:normal;">East @ West</span>
+        <span style="font-family:Georgia,'Times New Roman',serif;font-size:13px;letter-spacing:4px;text-transform:uppercase;color:#1F5C2E;font-weight:normal;">East at West</span>
       </td></tr>
 
       <!-- Card -->
@@ -392,7 +392,7 @@ exports.handler = async (event) => {
 
     const code = 'EW-' + String(Math.floor(Math.random() * 9000) + 1000);
     const pending = data.party >= 7;
-    const from = `"East@West" <${process.env.SMTP_FROM_EMAIL}>`;
+    const from = `"East at West" <${process.env.SMTP_FROM_EMAIL}>`;
 
     // Supabase save — await and capture result for diagnostics
     let supabaseError = null;

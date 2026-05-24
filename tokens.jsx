@@ -1,8 +1,8 @@
-// Design tokens, palettes, translations for East@West app
+// Design tokens, palettes, translations for East at West app
 
 const PALETTES = {
   eastatwest: {
-    name: 'East@West',
+    name: 'East at West',
     light: {
       bg: '#EFF1E5',
       surface: '#F8F9EE',
@@ -146,7 +146,7 @@ const T = {
     greeting_morning: 'Good morning',
     greeting_afternoon: 'Good afternoon',
     greeting_evening: 'Good evening',
-    home_subtitle: 'East@West, Brussels',
+    home_subtitle: 'East at West, Brussels',
     home_open: 'Open today',
     home_hours: '12:00 – 14:00  ·  18:00 – 22:00',
     home_book: 'Book a table',
@@ -308,7 +308,7 @@ const T = {
     greeting_morning: 'Bonjour',
     greeting_afternoon: 'Bon apr\u00e8s-midi',
     greeting_evening: 'Bonsoir',
-    home_subtitle: 'East@West, Bruxelles',
+    home_subtitle: 'East at West, Bruxelles',
     home_open: 'Ouvert aujourd\u2019hui',
     home_hours: '12h00 – 14h00  ·  18h00 – 22h00',
     home_book: 'R\u00e9server une table',
@@ -467,7 +467,7 @@ const T = {
     greeting_morning: 'Goedemorgen',
     greeting_afternoon: 'Goedemiddag',
     greeting_evening: 'Goedenavond',
-    home_subtitle: 'East@West, Brussel',
+    home_subtitle: 'East at West, Brussel',
     home_open: 'Vandaag open',
     home_hours: '12:00 \u2013 14:00  \u00b7  18:00 \u2013 22:00',
     home_book: 'Tafel reserveren',

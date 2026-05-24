@@ -1,4 +1,4 @@
-// Shared UI primitives + icons for East@West app
+// Shared UI primitives + icons for East at West app
 
 // ─────────────────────────────────────────────────────────────
 // Icons — minimal line set drawn in single stroke
@@ -605,9 +605,9 @@ function LanguageSheet({ theme, currentLang, onPick, onClose }) {
           fontSize: 13, color: theme.inkMute,
           padding: '0 4px 14px',
         }}>
-          {currentLang === 'fr' ? 'Nous parlons trois langues \u00e0 East@West.' :
-           currentLang === 'nl' ? 'Bij East@West spreken we drie talen.' :
-           'We speak three languages at East@West.'}
+          {currentLang === 'fr' ? 'Nous parlons trois langues \u00e0 East at West.' :
+           currentLang === 'nl' ? 'Bij East at West spreken we drie talen.' :
+           'We speak three languages at East at West.'}
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {LANGS.map(l => {
