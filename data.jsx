@@ -442,10 +442,10 @@ function timeSlots(dateStr, mealId) {
   // Saturday: dinner only — no lunch service
   if (dow === 6 && mealId === 'lunch') return [];
 
-  // Lunch 12:00 – 14:30 (last reservation 14:30)
-  const lunch = ['12:00','12:30','13:00','13:30','14:00','14:30'];
-  // Dinner 18:00 – 22:00 (last reservation 20:30)
-  const dinner = ['18:00','18:30','19:00','19:30','20:00','20:30'];
+  // Lunch 12:00 – 14:00 (last reservation 14:00)
+  const lunch = ['12:00','12:30','13:00','13:30','14:00'];
+  // Dinner 18:00 – 22:00 (last reservation 22:00)
+  const dinner = ['18:00','18:30','19:00','19:30','20:00','20:30','21:00','21:30','22:00'];
   const all = mealId === 'lunch' ? lunch : dinner;
 
   // Pseudo-randomly mark some slots as taken, seeded by the date

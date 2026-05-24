@@ -14,7 +14,7 @@ function HomeScreen({ theme, t, lang, activeOrder, activeReservation, onTab, onC
   const isOpenToday = !CLOSED_DAYS.includes(now.getDay());
   const greet = hour < 12 ? t.greeting_morning : hour < 17 ? t.greeting_afternoon : t.greeting_evening;
   const signatures = SIGNATURE_IDS.map(id => dishById(id)).filter(Boolean);
-  const closingHour = hour < 15 ? '14:30' : '22:00';
+  const closingHour = hour < 15 ? '14:00' : '22:00';
   return (
     <div>
       <HomeHero theme={theme} t={t} lang={lang} greet={greet} closing={closingHour} isOpenToday={isOpenToday} onBook={() => onTab('reserve')} onChangeLanguage={onChangeLanguage}/>
