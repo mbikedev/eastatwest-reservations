@@ -5,22 +5,27 @@
 // ─────────────────────────────────────────────────────────────
 const HOME_HERO_IMG = 'img/chefs-dish.webp';
 
+// 0 = Sunday, 1 = Monday … 6 = Saturday. Add closed days here.
+const CLOSED_DAYS = [0]; // Sunday
+
 function HomeScreen({ theme, t, lang, activeOrder, activeReservation, onTab, onChangeLanguage, onTrack, onViewReservation }) {
-  const hour = new Date().getHours();
+  const now = new Date();
+  const hour = now.getHours();
+  const isOpenToday = !CLOSED_DAYS.includes(now.getDay());
   const greet = hour < 12 ? t.greeting_morning : hour < 17 ? t.greeting_afternoon : t.greeting_evening;
   const signatures = SIGNATURE_IDS.map(id => dishById(id)).filter(Boolean);
   const closingHour = hour < 15 ? '14:30' : '22:00';
   return (
     <div>
-      <HomeHero theme={theme} t={t} lang={lang} greet={greet} closing={closingHour} onBook={() => onTab('reserve')} onChangeLanguage={onChangeLanguage}/>
+      <HomeHero theme={theme} t={t} lang={lang} greet={greet} closing={closingHour} isOpenToday={isOpenToday} onBook={() => onTab('reserve')} onChangeLanguage={onChangeLanguage}/>
 
       {/* Active strip overlapping the hero curve */}
-      {(activeOrder || activeReservation) && (
+      {(activeOrder || (activeReservation && isOpenToday)) && (
         <div style={{ padding: '0 20px', marginTop: -22, position: 'relative', zIndex: 3 }}>
           {activeOrder && (
             <ActiveOrderCard theme={theme} t={t} lang={lang} order={activeOrder} onTrack={onTrack}/>
           )}
-          {activeReservation && !activeOrder && (
+          {activeReservation && !activeOrder && isOpenToday && (
             <ActiveReservationCard theme={theme} t={t} lang={lang} res={activeReservation} onView={onViewReservation}/>
           )}
         </div>
@@ -88,7 +93,7 @@ function HomeScreen({ theme, t, lang, activeOrder, activeReservation, onTab, onC
 // ─────────────────────────────────────────────────────────────
 // Hero — full-bleed photo + dark gradient + wordmark + greeting
 // ─────────────────────────────────────────────────────────────
-function HomeHero({ theme, t, lang, greet, closing, onBook, onChangeLanguage }) {
+function HomeHero({ theme, t, lang, greet, closing, isOpenToday, onBook, onChangeLanguage }) {
   const greetLine = lang === 'fr' ? 'bienvenue' : lang === 'nl' ? 'welkom' : 'welcome';
   const greetItalic = lang === 'fr' ? 'chez nous.' : lang === 'nl' ? 'thuis.' : 'home.';
   return (
@@ -149,17 +154,23 @@ function HomeHero({ theme, t, lang, greet, closing, onBook, onChangeLanguage }) 
           <div style={{
             display: 'inline-flex', alignItems: 'center', gap: 8,
             padding: '7px 12px', borderRadius: 999,
-            background: 'rgba(255,255,255,0.12)',
+            background: isOpenToday ? 'rgba(255,255,255,0.12)' : 'rgba(180,60,40,0.30)',
             backdropFilter: 'blur(14px)',
             WebkitBackdropFilter: 'blur(14px)',
-            border: '1px solid rgba(255,255,255,0.18)',
+            border: isOpenToday ? '1px solid rgba(255,255,255,0.18)' : '1px solid rgba(220,80,60,0.40)',
             color: '#fff',
             fontFamily: '"DM Sans", sans-serif',
             fontSize: 11.5, fontWeight: 500, letterSpacing: 0.3,
             flexShrink: 0, whiteSpace: 'nowrap',
           }}>
-            <PulseDot color="#A7E1A4"/>
-            <span style={{ whiteSpace: 'nowrap' }}>{lang === 'fr' ? 'Jusqu\u2019\u00e0' : lang === 'nl' ? 'Tot' : 'Until'} {closing}</span>
+            {isOpenToday ? (
+              <>
+                <PulseDot color="#A7E1A4"/>
+                <span style={{ whiteSpace: 'nowrap' }}>{lang === 'fr' ? 'Jusqu\u2019\u00e0' : lang === 'nl' ? 'Tot' : 'Until'} {closing}</span>
+              </>
+            ) : (
+              <span style={{ whiteSpace: 'nowrap' }}>{lang === 'fr' ? 'Ferm\u00e9 aujourd\u2019hui' : lang === 'nl' ? 'Vandaag gesloten' : 'Closed today'}</span>
+            )}
           </div>
         </div>
       </div>
