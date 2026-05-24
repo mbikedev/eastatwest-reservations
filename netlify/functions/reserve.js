@@ -23,7 +23,9 @@ const transporter = nodemailer.createTransport({
 // ── Supabase ──────────────────────────────────────────────────
 async function saveToSupabase(row) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  // Service role key bypasses RLS — required for server-side inserts.
+  // Falls back to anon key only if service role key is not set.
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !key) return;
   const res = await fetch(`${url}/rest/v1/reservations`, {
     method: 'POST',
