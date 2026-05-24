@@ -260,10 +260,10 @@ exports.handler = async (event) => {
   try {
     const { data, lang = 'en' } = JSON.parse(event.body || '{}');
 
-    if (!data || !data.name || !data.email || !data.date || !data.time) {
+    if (!data || !data.name || !data.email || !data.date || !data.time || !data.endTime) {
       return {
         statusCode: 400, headers: CORS,
-        body: JSON.stringify({ error: 'Missing required fields: name, email, date, time' }),
+        body: JSON.stringify({ error: 'Missing required fields: name, email, date, time, endTime' }),
       };
     }
 
@@ -273,12 +273,17 @@ exports.handler = async (event) => {
 
     // Supabase — non-fatal if it fails
     saveToSupabase({
-      code, status: pending ? 'pending' : 'confirmed',
-      name: data.name, email: data.email, phone: data.phone || null,
-      party: data.party, date: data.date,
-      time: data.time, end_time: data.endTime || null,
-      occasion: data.occasion || null, notes: data.notes || null,
-      special_requests: data.specialRequests || null,
+      invoice_number: code,
+      status: pending ? 'pending' : 'confirmed',
+      name: data.name,
+      email: data.email,
+      phone: data.phone || '',
+      guests: data.party,
+      date: data.date,
+      start_time: data.time,
+      end_time: data.endTime || data.time,
+      special_requests: [data.notes, data.specialRequests].filter(Boolean).join('\n\n') || null,
+      language: lang,
     }).catch((e) => console.warn('Supabase:', e.message));
 
     // Send both emails in parallel
