@@ -23,11 +23,13 @@ const transporter = nodemailer.createTransport({
 // ── Supabase ──────────────────────────────────────────────────
 async function saveToSupabase(row) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  // Service role key bypasses RLS — required for server-side inserts.
-  // Falls back to anon key only if service role key is not set.
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   console.log('Supabase key type:', process.env.SUPABASE_SERVICE_ROLE_KEY ? 'service_role' : 'anon');
-  if (!url || !key) return;
+  console.log('Supabase URL:', url);
+  console.log('Supabase row:', JSON.stringify(row));
+  if (!url || !key) {
+    throw new Error('Supabase URL or key missing');
+  }
   const res = await fetch(`${url}/rest/v1/reservations`, {
     method: 'POST',
     headers: {
@@ -38,9 +40,11 @@ async function saveToSupabase(row) {
     },
     body: JSON.stringify(row),
   });
+  const responseText = await res.text();
+  console.log('Supabase response status:', res.status);
+  console.log('Supabase response body:', responseText || '(empty)');
   if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`Supabase error ${res.status}: ${err}`);
+    throw new Error(`Supabase error ${res.status}: ${responseText}`);
   }
 }
 
