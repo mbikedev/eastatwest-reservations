@@ -71,7 +71,7 @@ function buildGuestHtml(data, code, lang) {
       guests: 'Guests', date: 'Date', time: 'Time',
       occasion: 'Occasion', notes: 'Allergies & dietary', special: 'Special requests', addr: 'Address',
       footer: "East@West · Bld de l'Empereur 26, 1000 Brussels",
-      cancel: 'To cancel or modify, reply to this email at least 2 hours before.',
+      cancel: 'To cancel or modify, reply to this email at least 2 hours before or call us at <a href="tel:+32465206024" style="color:#1F5C2E;">+32 465 20 60 24</a>.',
     },
     fr: {
       title: pending ? 'Réservation en attente' : "C'est réservé !",
@@ -82,7 +82,7 @@ function buildGuestHtml(data, code, lang) {
       guests: 'Personnes', date: 'Date', time: 'Heure',
       occasion: 'Occasion', notes: 'Allergies & régimes', special: 'Demandes spéciales', addr: 'Adresse',
       footer: "East@West · Bld de l'Empereur 26, 1000 Bruxelles",
-      cancel: "Pour annuler ou modifier, répondez à cet e-mail au moins 2 heures avant.",
+      cancel: 'Pour annuler ou modifier, répondez à cet e-mail au moins 2 heures avant ou appelez-nous au <a href="tel:+32465206024" style="color:#1F5C2E;">+32 465 20 60 24</a>.',
     },
     nl: {
       title: pending ? 'Reservering in behandeling' : 'Reservering bevestigd!',
@@ -93,7 +93,7 @@ function buildGuestHtml(data, code, lang) {
       guests: 'Gasten', date: 'Datum', time: 'Tijdstip',
       occasion: 'Gelegenheid', notes: 'Allergieën & dieet', special: 'Speciale verzoeken', addr: 'Adres',
       footer: "East@West · Bld de l'Empereur 26, 1000 Brussel",
-      cancel: 'Om te annuleren of te wijzigen, beantwoord deze e-mail minstens 2 uur van tevoren.',
+      cancel: 'Om te annuleren of te wijzigen, beantwoord deze e-mail minstens 2 uur van tevoren of bel ons op <a href="tel:+32465206024" style="color:#1F5C2E;">+32 465 20 60 24</a>.',
     },
   };
   const s = copy[lang] || copy.en;
@@ -195,22 +195,48 @@ function buildGuestHtml(data, code, lang) {
 }
 
 // ── Restaurant notification email ─────────────────────────────
-function buildRestaurantHtml(data, code) {
+function buildRestaurantHtml(data, code, lang) {
   const pending = data.party >= 7;
+
+  const copy = {
+    en: {
+      title: 'New Reservation',
+      pending: 'PENDING APPROVAL', confirmed: 'CONFIRMED',
+      name: 'Name', email: 'Email', phone: 'Phone', party: 'Party size',
+      date: 'Date', time: 'Time', occasion: 'Occasion', notes: 'Notes', special: 'Special requests',
+      approvalNote: `This party (${data.party} guests) requires manual approval. Please confirm or decline by replying to ${data.email}.`,
+    },
+    fr: {
+      title: 'Nouvelle réservation',
+      pending: 'EN ATTENTE', confirmed: 'CONFIRMÉE',
+      name: 'Nom', email: 'E-mail', phone: 'Téléphone', party: 'Personnes',
+      date: 'Date', time: 'Heure', occasion: 'Occasion', notes: 'Notes', special: 'Demandes spéciales',
+      approvalNote: `Ce groupe (${data.party} personnes) nécessite une approbation manuelle. Veuillez confirmer ou refuser en répondant à ${data.email}.`,
+    },
+    nl: {
+      title: 'Nieuwe reservering',
+      pending: 'IN BEHANDELING', confirmed: 'BEVESTIGD',
+      name: 'Naam', email: 'E-mail', phone: 'Telefoon', party: 'Aantal gasten',
+      date: 'Datum', time: 'Tijdstip', occasion: 'Gelegenheid', notes: 'Notities', special: 'Speciale verzoeken',
+      approvalNote: `Deze groep (${data.party} gasten) vereist handmatige goedkeuring. Bevestig of weiger door te antwoorden op ${data.email}.`,
+    },
+  };
+  const c = copy[lang] || copy.en;
+
   const statusBadge = pending
-    ? `<span style="background:#D9A93A;color:#1A1410;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:700;">PENDING APPROVAL</span>`
-    : `<span style="background:#1F5C2E;color:#fff;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:700;">CONFIRMED</span>`;
+    ? `<span style="background:#D9A93A;color:#1A1410;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:700;">${c.pending}</span>`
+    : `<span style="background:#1F5C2E;color:#fff;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:700;">${c.confirmed}</span>`;
 
   const rows = [
-    ['Name', data.name],
-    ['Email', data.email],
-    ['Phone', data.phone || '—'],
-    ['Party size', String(data.party)],
-    ['Date', data.date],
-    ['Time', data.endTime ? `${data.time} → ${data.endTime}` : data.time],
-    data.occasion && data.occasion !== 'none' ? ['Occasion', data.occasion] : null,
-    data.notes ? ['Notes', data.notes] : null,
-    data.specialRequests ? ['Special requests', data.specialRequests] : null,
+    [c.name, data.name],
+    [c.email, data.email],
+    [c.phone, data.phone || '—'],
+    [c.party, String(data.party)],
+    [c.date, data.date],
+    [c.time, data.endTime ? `${data.time} → ${data.endTime}` : data.time],
+    data.occasion && data.occasion !== 'none' ? [c.occasion, data.occasion] : null,
+    data.notes ? [c.notes, data.notes] : null,
+    data.specialRequests ? [c.special, data.specialRequests] : null,
   ]
     .filter(Boolean)
     .map(
@@ -235,7 +261,7 @@ function buildRestaurantHtml(data, code) {
   <table width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid #eee;">
     ${rows}
   </table>
-  ${pending ? `<div style="margin-top:20px;padding:14px 16px;background:#FFF8E8;border-left:3px solid #D9A93A;border-radius:4px;font-size:13px;color:#7A5C1E;">This party (${data.party} guests) requires manual approval. Please confirm or decline by replying to ${data.email}.</div>` : ''}
+  ${pending ? `<div style="margin-top:20px;padding:14px 16px;background:#FFF8E8;border-left:3px solid #D9A93A;border-radius:4px;font-size:13px;color:#7A5C1E;">${c.approvalNote}</div>` : ''}
 </div>
 </body>
 </html>`;
@@ -297,7 +323,7 @@ exports.handler = async (event) => {
         from, to: process.env.SMTP_FROM_EMAIL,
         replyTo: data.email,
         subject: `${pending ? '[PENDING] ' : '[NEW] '}${code} · ${data.party} guests · ${data.date}`,
-        html: buildRestaurantHtml(data, code),
+        html: buildRestaurantHtml(data, code, lang),
       }),
     ]);
 
