@@ -1,5 +1,5 @@
 // Netlify Function — POST /.netlify/functions/order
-// Processes a takeaway order (pay on pickup): sends notification emails.
+// Processes a takeaway / delivery order (pay on pickup or cash on delivery): sends notification emails.
 
 const nodemailer = require('nodemailer');
 
@@ -23,11 +23,12 @@ const CORS = {
   'Content-Type': 'application/json',
 };
 
-function buildRestaurantOrderHtml(customer, items, totals, pickup, code, lang) {
+function buildRestaurantOrderHtml(customer, items, totals, pickup, code, lang, deliveryType, deliveryAddress) {
+  const isDelivery = deliveryType === 'delivery';
   const copy = {
-    en: { title: 'New Takeaway Order', pickup: 'Pickup time', name: 'Name', phone: 'Phone', email: 'Email', item: 'Item', qty: 'Qty', subtotal: 'Subtotal', tax: 'VAT 12%', total: 'Total', badge: 'PAY ON PICKUP' },
-    fr: { title: 'Nouvelle commande à emporter', pickup: 'Heure de retrait', name: 'Nom', phone: 'Téléphone', email: 'E-mail', item: 'Article', qty: 'Qté', subtotal: 'Sous-total', tax: 'TVA 12%', total: 'Total', badge: 'PAIEMENT SUR PLACE' },
-    nl: { title: 'Nieuwe afhaalbestelling', pickup: 'Afhaaltijd', name: 'Naam', phone: 'Telefoon', email: 'E-mail', item: 'Artikel', qty: 'Aant.', subtotal: 'Subtotaal', tax: 'BTW 12%', total: 'Totaal', badge: 'BETALEN BIJ AFHALING' },
+    en: { title: isDelivery ? 'New Delivery Order' : 'New Takeaway Order', timeLabel: isDelivery ? 'Delivery time' : 'Pickup time', address: 'Address', name: 'Name', phone: 'Phone', email: 'Email', subtotal: 'Subtotal', tax: 'VAT 12%', total: 'Total', badge: isDelivery ? 'DELIVERY · CASH' : 'PAY ON PICKUP' },
+    fr: { title: isDelivery ? 'Nouvelle commande livraison' : 'Nouvelle commande à emporter', timeLabel: isDelivery ? 'Heure de livraison' : 'Heure de retrait', address: 'Adresse', name: 'Nom', phone: 'Téléphone', email: 'E-mail', subtotal: 'Sous-total', tax: 'TVA 12%', total: 'Total', badge: isDelivery ? 'LIVRAISON · ESPÈCES' : 'PAIEMENT SUR PLACE' },
+    nl: { title: isDelivery ? 'Nieuwe leveringsbestelling' : 'Nieuwe afhaalbestelling', timeLabel: isDelivery ? 'Leveringstijd' : 'Afhaaltijd', address: 'Adres', name: 'Naam', phone: 'Telefoon', email: 'E-mail', subtotal: 'Subtotaal', tax: 'BTW 12%', total: 'Totaal', badge: isDelivery ? 'LEVERING · CONTANT' : 'BETALEN BIJ AFHALING' },
   };
   const c = copy[lang] || copy.en;
 
@@ -50,7 +51,7 @@ function buildRestaurantOrderHtml(customer, items, totals, pickup, code, lang) {
         <table width="100%" cellpadding="0" cellspacing="0">
           <tr>
             <td style="padding:24px 28px 0;font-size:20px;font-weight:700;color:#1F5C2E;">${c.title}</td>
-            <td style="padding:24px 28px 0;text-align:right;"><span style="background:#D9A93A;color:#1A1410;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;">${c.badge}</span></td>
+            <td style="padding:24px 28px 0;text-align:right;"><span style="background:${isDelivery ? '#1F5C2E' : '#D9A93A'};color:${isDelivery ? '#fff' : '#1A1410'};padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;">${c.badge}</span></td>
           </tr>
         </table>
         <table width="100%" cellpadding="0" cellspacing="0">
@@ -72,9 +73,13 @@ function buildRestaurantOrderHtml(customer, items, totals, pickup, code, lang) {
                 <td style="padding:10px 0;font-size:14px;color:#1A2419;font-weight:500;">${customer.email}</td>
               </tr>` : ''}
               <tr>
-                <td style="padding:10px 16px 10px 0;font-size:11px;color:#999;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;white-space:nowrap;">${c.pickup}</td>
+                <td style="padding:10px 16px 10px 0;font-size:11px;color:#999;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;white-space:nowrap;">${c.timeLabel}</td>
                 <td style="padding:10px 0;font-size:16px;color:#1F5C2E;font-weight:700;">${pickup}</td>
               </tr>
+              ${isDelivery && deliveryAddress ? `<tr>
+                <td style="padding:10px 16px 10px 0;font-size:11px;color:#999;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;white-space:nowrap;">${c.address}</td>
+                <td style="padding:10px 0;font-size:14px;color:#1A2419;font-weight:600;">${deliveryAddress}</td>
+              </tr>` : ''}
             </table>
           </td></tr>
         </table>
@@ -103,11 +108,36 @@ function buildRestaurantOrderHtml(customer, items, totals, pickup, code, lang) {
 </body></html>`;
 }
 
-function buildCustomerOrderHtml(customer, items, totals, pickup, code, lang) {
+function buildCustomerOrderHtml(customer, items, totals, pickup, code, lang, deliveryType, deliveryAddress) {
+  const isDelivery = deliveryType === 'delivery';
   const copy = {
-    en: { title: 'Order confirmed!', sub: 'Show this code when you collect your order.', pickup: 'Ready by', total: 'Total to pay at pickup', addr: "East at West · Bld de l'Empereur 26, 1000 Brussels", cancel: 'Questions? Call us at: <a href="tel:+32465206024" style="color:#1F5C2E;font-weight:600;">+32 465 20 60 24</a>' },
-    fr: { title: 'Commande confirmée !', sub: 'Présentez ce code lors du retrait de votre commande.', pickup: 'Prêt à', total: 'Total à payer sur place', addr: "East at West · Bld de l'Empereur 26, 1000 Bruxelles", cancel: 'Des questions ? Appelez-nous au : <a href="tel:+32465206024" style="color:#1F5C2E;font-weight:600;">+32 465 20 60 24</a>' },
-    nl: { title: 'Bestelling bevestigd!', sub: 'Toon deze code bij het afhalen van uw bestelling.', pickup: 'Klaar om', total: 'Totaal te betalen bij afhaling', addr: "East at West · Bld de l'Empereur 26, 1000 Brussel", cancel: 'Vragen? Bel ons op: <a href="tel:+32465206024" style="color:#1F5C2E;font-weight:600;">+32 465 20 60 24</a>' },
+    en: {
+      title: isDelivery ? 'Order confirmed!' : 'Order confirmed!',
+      sub: isDelivery ? 'Your order is on its way. Pay cash at the door.' : 'Show this code when you collect your order.',
+      timeLabel: isDelivery ? 'Delivered by' : 'Ready by',
+      total: isDelivery ? 'Total to pay at the door' : 'Total to pay at pickup',
+      addrLabel: 'Delivery address',
+      addr: "East at West · Bld de l'Empereur 26, 1000 Brussels",
+      cancel: 'Questions? Call us at: <a href="tel:+32465206024" style="color:#1F5C2E;font-weight:600;">+32 465 20 60 24</a>',
+    },
+    fr: {
+      title: 'Commande confirmée !',
+      sub: isDelivery ? 'Votre commande est en route. Payez en espèces à la porte.' : 'Présentez ce code lors du retrait de votre commande.',
+      timeLabel: isDelivery ? 'Livraison prévue à' : 'Prêt à',
+      total: isDelivery ? 'Total à payer à la porte' : 'Total à payer sur place',
+      addrLabel: 'Adresse de livraison',
+      addr: "East at West · Bld de l'Empereur 26, 1000 Bruxelles",
+      cancel: 'Des questions ? Appelez-nous au : <a href="tel:+32465206024" style="color:#1F5C2E;font-weight:600;">+32 465 20 60 24</a>',
+    },
+    nl: {
+      title: 'Bestelling bevestigd!',
+      sub: isDelivery ? 'Uw bestelling is onderweg. Betaal contant aan de deur.' : 'Toon deze code bij het afhalen van uw bestelling.',
+      timeLabel: isDelivery ? 'Geleverd om' : 'Klaar om',
+      total: isDelivery ? 'Totaal te betalen aan de deur' : 'Totaal te betalen bij afhaling',
+      addrLabel: 'Leveringsadres',
+      addr: "East at West · Bld de l'Empereur 26, 1000 Brussel",
+      cancel: 'Vragen? Bel ons op: <a href="tel:+32465206024" style="color:#1F5C2E;font-weight:600;">+32 465 20 60 24</a>',
+    },
   };
   const c = copy[lang] || copy.en;
 
@@ -129,28 +159,36 @@ function buildCustomerOrderHtml(customer, items, totals, pickup, code, lang) {
           <tr><td style="padding:32px 36px 24px;">
             <h1 style="margin:0 0 8px;font-family:Georgia,'Times New Roman',serif;font-size:28px;font-weight:600;color:#1A2419;">${c.title}</h1>
             <p style="margin:0 0 24px;font-size:14px;color:#4B5A48;">${c.sub}</p>
-            <table width="100%" cellpadding="0" cellspacing="0" style="background:#EFF1E5;border-radius:10px;margin-bottom:24px;">
+            ${!isDelivery ? `<table width="100%" cellpadding="0" cellspacing="0" style="background:#EFF1E5;border-radius:10px;margin-bottom:24px;">
               <tr><td style="padding:16px 20px;text-align:center;">
                 <div style="font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:#7E8B7A;margin-bottom:6px;">Code</div>
                 <div style="font-family:Georgia,'Times New Roman',serif;font-size:32px;font-weight:700;color:#1F5C2E;letter-spacing:2px;">${code}</div>
               </td></tr>
-            </table>
-            <table width="100%" cellpadding="0" cellspacing="0" style="background:#EFF1E5;border-radius:10px;margin-bottom:24px;">
+            </table>` : ''}
+            <table width="100%" cellpadding="0" cellspacing="0" style="background:#EFF1E5;border-radius:10px;margin-bottom:${isDelivery && deliveryAddress ? '12px' : '24px'};">
               <tr><td style="padding:14px 20px;">
-                <div style="font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:#7E8B7A;margin-bottom:4px;">${c.pickup}</div>
+                <div style="font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:#7E8B7A;margin-bottom:4px;">${c.timeLabel}</div>
                 <div style="font-size:22px;font-weight:700;color:#1A2419;">${pickup}</div>
               </td></tr>
             </table>
+            ${isDelivery && deliveryAddress ? `<table width="100%" cellpadding="0" cellspacing="0" style="background:#EFF1E5;border-radius:10px;margin-bottom:24px;">
+              <tr><td style="padding:14px 20px;">
+                <div style="font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:#7E8B7A;margin-bottom:4px;">${c.addrLabel}</div>
+                <div style="font-size:16px;font-weight:600;color:#1A2419;">${deliveryAddress}</div>
+              </td></tr>
+            </table>` : ''}
             <ul style="margin:0 0 20px;padding:0 0 0 16px;">${itemList}</ul>
-            <div style="border-top:2px solid #1F5C2E;padding-top:12px;display:flex;justify-content:space-between;">
-              <span style="font-size:14px;font-weight:700;color:#1A2419;">${c.total}</span>
-              <span style="font-size:18px;font-weight:700;color:#1F5C2E;">€${totals.total.toFixed(2)}</span>
-            </div>
+            <table width="100%" cellpadding="0" cellspacing="0" style="border-top:2px solid #1F5C2E;padding-top:12px;">
+              <tr>
+                <td style="padding-top:12px;font-size:14px;font-weight:700;color:#1A2419;">${c.total}</td>
+                <td style="padding-top:12px;font-size:18px;font-weight:700;color:#1F5C2E;text-align:right;">€${totals.total.toFixed(2)}</td>
+              </tr>
+            </table>
           </td></tr>
         </table>
         <table width="100%" cellpadding="0" cellspacing="0">
           <tr><td style="background:#EFF1E5;padding:16px 36px;border-top:1px solid #E0E4D2;">
-            <div style="font-size:11px;font-weight:600;text-transform:uppercase;color:#7E8B7A;letter-spacing:0.5px;margin-bottom:4px;">Address</div>
+            <div style="font-size:11px;font-weight:600;text-transform:uppercase;color:#7E8B7A;letter-spacing:0.5px;margin-bottom:4px;">East at West</div>
             <div style="font-size:13px;color:#1A2419;">Bld de l'Empereur 26, 1000 Brussels</div>
           </td></tr>
         </table>
@@ -170,7 +208,7 @@ exports.handler = async (event) => {
   if (event.httpMethod !== 'POST') return { statusCode: 405, headers: CORS, body: JSON.stringify({ error: 'Method not allowed' }) };
 
   try {
-    const { customer, items, totals, pickup, lang = 'en' } = JSON.parse(event.body || '{}');
+    const { customer, items, totals, pickup, lang = 'en', deliveryType = 'pickup', deliveryAddress = '' } = JSON.parse(event.body || '{}');
 
     if (!customer?.name || !customer?.phone || !items?.length) {
       return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: 'Missing required fields' }) };
@@ -178,36 +216,40 @@ exports.handler = async (event) => {
 
     const code = 'TO-' + String(Math.floor(Math.random() * 9000) + 1000);
     const from = `"East at West" <${process.env.SMTP_FROM_EMAIL}>`;
+    const isDelivery = deliveryType === 'delivery';
 
     // Compute ETA label
     let etaStr = pickup;
     if (pickup === 'asap') {
       const e = new Date();
-      e.setMinutes(e.getMinutes() + 25);
+      e.setMinutes(e.getMinutes() + (isDelivery ? 40 : 25));
       etaStr = e.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
     }
+
+    const subjectPrefix = isDelivery ? '[DELIVERY]' : '[ORDER]';
+    const subjectSuffix = isDelivery ? `· delivery ${etaStr} · ${deliveryAddress}` : `· pickup ${etaStr}`;
 
     const emails = [
       transporter.sendMail({
         from,
         to: process.env.SMTP_FROM_EMAIL,
         replyTo: customer.email || undefined,
-        subject: `[ORDER] ${code} · ${customer.name} · pickup ${etaStr}`,
-        html: buildRestaurantOrderHtml(customer, items, totals, etaStr, code, lang),
+        subject: `${subjectPrefix} ${code} · ${customer.name} ${subjectSuffix}`,
+        html: buildRestaurantOrderHtml(customer, items, totals, etaStr, code, lang, deliveryType, deliveryAddress),
       }),
     ];
 
     if (customer.email) {
       const subjectMap = {
-        fr: `Commande confirmée – East at West (${code})`,
-        nl: `Bestelling bevestigd – East at West (${code})`,
-        en: `Order confirmed – East at West (${code})`,
+        fr: isDelivery ? `Livraison confirmée – East at West (${code})` : `Commande confirmée – East at West (${code})`,
+        nl: isDelivery ? `Levering bevestigd – East at West (${code})` : `Bestelling bevestigd – East at West (${code})`,
+        en: isDelivery ? `Delivery confirmed – East at West (${code})` : `Order confirmed – East at West (${code})`,
       };
       emails.push(transporter.sendMail({
         from,
         to: customer.email,
         subject: subjectMap[lang] || subjectMap.en,
-        html: buildCustomerOrderHtml(customer, items, totals, etaStr, code, lang),
+        html: buildCustomerOrderHtml(customer, items, totals, etaStr, code, lang, deliveryType, deliveryAddress),
       }));
     }
 
