@@ -1,5 +1,5 @@
 // Netlify Function — POST /.netlify/functions/order
-// Processes a takeaway / delivery order (pay on pickup or cash on delivery): sends notification emails.
+// Processes a takeaway / delivery order (pay on pickup or cash on delivery): sends notification emails + saves to Supabase.
 
 const nodemailer = require('nodemailer');
 
@@ -15,6 +15,50 @@ const transporter = nodemailer.createTransport({
   auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
   tls: { rejectUnauthorized: false },
 });
+
+// ── Supabase ──────────────────────────────────────────────────
+async function saveOrderToSupabase(orderRow, items) {
+  const url = (process.env.NEXT_PUBLIC_SUPABASE_URL || '').replace(/\/rest\/v1\/?$/, '').replace(/\/$/, '');
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !key) throw new Error('Supabase URL or key missing');
+
+  const headers = {
+    'Content-Type': 'application/json',
+    apikey: key,
+    Authorization: `Bearer ${key}`,
+    Prefer: 'return=representation',
+  };
+
+  const orderRes = await fetch(`${url}/rest/v1/orders`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(orderRow),
+  });
+  const orderText = await orderRes.text();
+  if (!orderRes.ok) throw new Error(`Supabase orders error ${orderRes.status}: ${orderText}`);
+
+  const inserted = JSON.parse(orderText);
+  const orderId = Array.isArray(inserted) ? inserted[0].id : inserted.id;
+
+  if (items && items.length > 0) {
+    const itemRows = items.map(item => ({
+      order_id: orderId,
+      product_name: item.name,
+      quantity: item.qty,
+      unit_price: item.price,
+      total_price: item.lineTotal,
+    }));
+    const itemsRes = await fetch(`${url}/rest/v1/order_items`, {
+      method: 'POST',
+      headers: { ...headers, Prefer: 'return=minimal' },
+      body: JSON.stringify(itemRows),
+    });
+    if (!itemsRes.ok) {
+      const t = await itemsRes.text();
+      console.error(`Supabase order_items error ${itemsRes.status}: ${t}`);
+    }
+  }
+}
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -254,6 +298,26 @@ exports.handler = async (event) => {
     }
 
     await Promise.all(emails);
+
+    // Save to Supabase so the admin orders page can see it
+    const deliveryDate = new Date().toISOString().split('T')[0];
+    const orderRow = {
+      customer_name: customer.name,
+      customer_email: customer.email || '',
+      customer_phone: customer.phone,
+      delivery_type: deliveryType,
+      delivery_date: deliveryDate,
+      delivery_time: etaStr,
+      delivery_address: isDelivery && deliveryAddress ? { street: deliveryAddress } : null,
+      total_amount: totals.total,
+      status: 'pending',
+      language: lang,
+    };
+    try {
+      await saveOrderToSupabase(orderRow, items);
+    } catch (dbErr) {
+      console.error('Supabase save error (non-fatal):', dbErr);
+    }
 
     return {
       statusCode: 200, headers: CORS,
