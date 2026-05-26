@@ -786,7 +786,6 @@ function ConfirmView({ theme, t, lang, cart, totals, pickup, onBack, onConfirm, 
     </div>
   );
 }
-}
 
 function Spinner({ color = '#fff' }) {
   return (
