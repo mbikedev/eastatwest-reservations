@@ -1,0 +1,227 @@
+// Netlify Function — POST /.netlify/functions/order
+// Processes a takeaway order (pay on pickup): sends notification emails.
+
+const nodemailer = require('nodemailer');
+
+function parsePort(raw) {
+  const n = parseInt(String(raw || '').replace(/\D/g, ''), 10);
+  return isNaN(n) ? 587 : n;
+}
+
+const transporter = nodemailer.createTransport({
+  host: process.env.SMTP_HOST,
+  port: parsePort(process.env.SMTP_PORT),
+  secure: false,
+  auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+  tls: { rejectUnauthorized: false },
+});
+
+const CORS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'Content-Type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Content-Type': 'application/json',
+};
+
+function buildRestaurantOrderHtml(customer, items, totals, pickup, code, lang) {
+  const copy = {
+    en: { title: 'New Takeaway Order', pickup: 'Pickup time', name: 'Name', phone: 'Phone', email: 'Email', item: 'Item', qty: 'Qty', subtotal: 'Subtotal', tax: 'VAT 12%', total: 'Total', badge: 'PAY ON PICKUP' },
+    fr: { title: 'Nouvelle commande à emporter', pickup: 'Heure de retrait', name: 'Nom', phone: 'Téléphone', email: 'E-mail', item: 'Article', qty: 'Qté', subtotal: 'Sous-total', tax: 'TVA 12%', total: 'Total', badge: 'PAIEMENT SUR PLACE' },
+    nl: { title: 'Nieuwe afhaalbestelling', pickup: 'Afhaaltijd', name: 'Naam', phone: 'Telefoon', email: 'E-mail', item: 'Artikel', qty: 'Aant.', subtotal: 'Subtotaal', tax: 'BTW 12%', total: 'Totaal', badge: 'BETALEN BIJ AFHALING' },
+  };
+  const c = copy[lang] || copy.en;
+
+  const itemRows = items.map(item => `
+    <tr>
+      <td style="padding:9px 0;border-bottom:1px solid #eee;font-size:14px;color:#1A2419;font-weight:500;">${item.name}</td>
+      <td style="padding:9px 0;border-bottom:1px solid #eee;font-size:14px;color:#7E8B7A;text-align:center;width:40px;">${item.qty}</td>
+      <td style="padding:9px 0;border-bottom:1px solid #eee;font-size:14px;color:#1A2419;font-weight:600;text-align:right;white-space:nowrap;">€${item.lineTotal.toFixed(2)}</td>
+    </tr>`).join('');
+
+  return `<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/></head>
+<body style="margin:0;padding:0;background:#f2f2f2;font-family:Helvetica,Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f2f2f2;padding:32px 16px;">
+  <tr><td align="center">
+    <table width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;">
+      <tr><td style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.07);">
+        <table width="100%" cellpadding="0" cellspacing="0"><tr><td style="background:#1F5C2E;height:4px;font-size:0;">&nbsp;</td></tr></table>
+        <table width="100%" cellpadding="0" cellspacing="0">
+          <tr>
+            <td style="padding:24px 28px 0;font-size:20px;font-weight:700;color:#1F5C2E;">${c.title}</td>
+            <td style="padding:24px 28px 0;text-align:right;"><span style="background:#D9A93A;color:#1A1410;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;">${c.badge}</span></td>
+          </tr>
+        </table>
+        <table width="100%" cellpadding="0" cellspacing="0">
+          <tr><td style="padding:6px 28px 16px;font-size:13px;color:#888;">Code: <strong style="color:#1A2419;">${code}</strong></td></tr>
+        </table>
+        <table width="100%" cellpadding="0" cellspacing="0" style="padding:0 28px;">
+          <tr><td>
+            <table width="100%" cellpadding="0" cellspacing="0">
+              <tr>
+                <td style="padding:10px 16px 10px 0;font-size:11px;color:#999;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;white-space:nowrap;width:1%;">${c.name}</td>
+                <td style="padding:10px 0;font-size:14px;color:#1A2419;font-weight:500;">${customer.name}</td>
+              </tr>
+              <tr>
+                <td style="padding:10px 16px 10px 0;font-size:11px;color:#999;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;white-space:nowrap;">${c.phone}</td>
+                <td style="padding:10px 0;font-size:14px;color:#1A2419;font-weight:500;"><a href="tel:${customer.phone}" style="color:#1F5C2E;">${customer.phone}</a></td>
+              </tr>
+              ${customer.email ? `<tr>
+                <td style="padding:10px 16px 10px 0;font-size:11px;color:#999;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;white-space:nowrap;">${c.email}</td>
+                <td style="padding:10px 0;font-size:14px;color:#1A2419;font-weight:500;">${customer.email}</td>
+              </tr>` : ''}
+              <tr>
+                <td style="padding:10px 16px 10px 0;font-size:11px;color:#999;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;white-space:nowrap;">${c.pickup}</td>
+                <td style="padding:10px 0;font-size:16px;color:#1F5C2E;font-weight:700;">${pickup}</td>
+              </tr>
+            </table>
+          </td></tr>
+        </table>
+        <table width="100%" cellpadding="0" cellspacing="0" style="padding:0 28px;margin-top:8px;">
+          <tr><td><table width="100%" cellpadding="0" cellspacing="0">
+            ${itemRows}
+            <tr>
+              <td colspan="2" style="padding:10px 0 4px;font-size:12px;color:#999;text-transform:uppercase;letter-spacing:0.4px;">${c.subtotal}</td>
+              <td style="padding:10px 0 4px;font-size:14px;color:#1A2419;text-align:right;">€${totals.subtotal.toFixed(2)}</td>
+            </tr>
+            <tr>
+              <td colspan="2" style="padding:4px 0;font-size:12px;color:#999;text-transform:uppercase;letter-spacing:0.4px;">${c.tax}</td>
+              <td style="padding:4px 0;font-size:14px;color:#1A2419;text-align:right;">€${totals.tax.toFixed(2)}</td>
+            </tr>
+            <tr>
+              <td colspan="2" style="padding:10px 0;font-size:14px;font-weight:700;color:#1A2419;border-top:2px solid #1F5C2E;">${c.total}</td>
+              <td style="padding:10px 0;font-size:18px;font-weight:700;color:#1F5C2E;text-align:right;border-top:2px solid #1F5C2E;">€${totals.total.toFixed(2)}</td>
+            </tr>
+          </table></td></tr>
+        </table>
+        <table width="100%" cellpadding="0" cellspacing="0"><tr><td style="height:28px;">&nbsp;</td></tr></table>
+      </td></tr>
+    </table>
+  </td></tr>
+</table>
+</body></html>`;
+}
+
+function buildCustomerOrderHtml(customer, items, totals, pickup, code, lang) {
+  const copy = {
+    en: { title: 'Order confirmed!', sub: 'Show this code when you collect your order.', pickup: 'Ready by', total: 'Total to pay at pickup', addr: "East at West · Bld de l'Empereur 26, 1000 Brussels", cancel: 'Questions? Call us at: <a href="tel:+32465206024" style="color:#1F5C2E;font-weight:600;">+32 465 20 60 24</a>' },
+    fr: { title: 'Commande confirmée !', sub: 'Présentez ce code lors du retrait de votre commande.', pickup: 'Prêt à', total: 'Total à payer sur place', addr: "East at West · Bld de l'Empereur 26, 1000 Bruxelles", cancel: 'Des questions ? Appelez-nous au : <a href="tel:+32465206024" style="color:#1F5C2E;font-weight:600;">+32 465 20 60 24</a>' },
+    nl: { title: 'Bestelling bevestigd!', sub: 'Toon deze code bij het afhalen van uw bestelling.', pickup: 'Klaar om', total: 'Totaal te betalen bij afhaling', addr: "East at West · Bld de l'Empereur 26, 1000 Brussel", cancel: 'Vragen? Bel ons op: <a href="tel:+32465206024" style="color:#1F5C2E;font-weight:600;">+32 465 20 60 24</a>' },
+  };
+  const c = copy[lang] || copy.en;
+
+  const itemList = items.map(i => `<li style="padding:4px 0;font-size:14px;color:#1A2419;">${i.qty}× ${i.name} — €${i.lineTotal.toFixed(2)}</li>`).join('');
+
+  return `<!DOCTYPE html>
+<html lang="${lang}">
+<head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/></head>
+<body style="margin:0;padding:0;background:#EFF1E5;font-family:Helvetica,Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#EFF1E5;padding:40px 16px;">
+  <tr><td align="center">
+    <table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;">
+      <tr><td align="center" style="padding:0 0 24px;">
+        <span style="font-family:Georgia,'Times New Roman',serif;font-size:13px;letter-spacing:4px;text-transform:uppercase;color:#1F5C2E;">East at West</span>
+      </td></tr>
+      <tr><td style="background:#fff;border-radius:18px;overflow:hidden;box-shadow:0 4px 28px rgba(26,36,25,0.09);">
+        <table width="100%" cellpadding="0" cellspacing="0"><tr><td style="background:#1F5C2E;height:5px;font-size:0;">&nbsp;</td></tr></table>
+        <table width="100%" cellpadding="0" cellspacing="0">
+          <tr><td style="padding:32px 36px 24px;">
+            <h1 style="margin:0 0 8px;font-family:Georgia,'Times New Roman',serif;font-size:28px;font-weight:600;color:#1A2419;">${c.title}</h1>
+            <p style="margin:0 0 24px;font-size:14px;color:#4B5A48;">${c.sub}</p>
+            <table width="100%" cellpadding="0" cellspacing="0" style="background:#EFF1E5;border-radius:10px;margin-bottom:24px;">
+              <tr><td style="padding:16px 20px;text-align:center;">
+                <div style="font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:#7E8B7A;margin-bottom:6px;">Code</div>
+                <div style="font-family:Georgia,'Times New Roman',serif;font-size:32px;font-weight:700;color:#1F5C2E;letter-spacing:2px;">${code}</div>
+              </td></tr>
+            </table>
+            <table width="100%" cellpadding="0" cellspacing="0" style="background:#EFF1E5;border-radius:10px;margin-bottom:24px;">
+              <tr><td style="padding:14px 20px;">
+                <div style="font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:#7E8B7A;margin-bottom:4px;">${c.pickup}</div>
+                <div style="font-size:22px;font-weight:700;color:#1A2419;">${pickup}</div>
+              </td></tr>
+            </table>
+            <ul style="margin:0 0 20px;padding:0 0 0 16px;">${itemList}</ul>
+            <div style="border-top:2px solid #1F5C2E;padding-top:12px;display:flex;justify-content:space-between;">
+              <span style="font-size:14px;font-weight:700;color:#1A2419;">${c.total}</span>
+              <span style="font-size:18px;font-weight:700;color:#1F5C2E;">€${totals.total.toFixed(2)}</span>
+            </div>
+          </td></tr>
+        </table>
+        <table width="100%" cellpadding="0" cellspacing="0">
+          <tr><td style="background:#EFF1E5;padding:16px 36px;border-top:1px solid #E0E4D2;">
+            <div style="font-size:11px;font-weight:600;text-transform:uppercase;color:#7E8B7A;letter-spacing:0.5px;margin-bottom:4px;">Address</div>
+            <div style="font-size:13px;color:#1A2419;">Bld de l'Empereur 26, 1000 Brussels</div>
+          </td></tr>
+        </table>
+      </td></tr>
+      <tr><td align="center" style="padding:20px 0 4px;">
+        <p style="margin:0 0 4px;font-size:12px;color:#7E8B7A;">${c.addr}</p>
+        <p style="margin:0;font-size:11px;color:#9DAD99;">${c.cancel}</p>
+      </td></tr>
+    </table>
+  </td></tr>
+</table>
+</body></html>`;
+}
+
+exports.handler = async (event) => {
+  if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers: CORS, body: '' };
+  if (event.httpMethod !== 'POST') return { statusCode: 405, headers: CORS, body: JSON.stringify({ error: 'Method not allowed' }) };
+
+  try {
+    const { customer, items, totals, pickup, lang = 'en' } = JSON.parse(event.body || '{}');
+
+    if (!customer?.name || !customer?.phone || !items?.length) {
+      return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: 'Missing required fields' }) };
+    }
+
+    const code = 'TO-' + String(Math.floor(Math.random() * 9000) + 1000);
+    const from = `"East at West" <${process.env.SMTP_FROM_EMAIL}>`;
+
+    // Compute ETA label
+    let etaStr = pickup;
+    if (pickup === 'asap') {
+      const e = new Date();
+      e.setMinutes(e.getMinutes() + 25);
+      etaStr = e.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
+    }
+
+    const emails = [
+      transporter.sendMail({
+        from,
+        to: process.env.SMTP_FROM_EMAIL,
+        replyTo: customer.email || undefined,
+        subject: `[ORDER] ${code} · ${customer.name} · pickup ${etaStr}`,
+        html: buildRestaurantOrderHtml(customer, items, totals, etaStr, code, lang),
+      }),
+    ];
+
+    if (customer.email) {
+      const subjectMap = {
+        fr: `Commande confirmée – East at West (${code})`,
+        nl: `Bestelling bevestigd – East at West (${code})`,
+        en: `Order confirmed – East at West (${code})`,
+      };
+      emails.push(transporter.sendMail({
+        from,
+        to: customer.email,
+        subject: subjectMap[lang] || subjectMap.en,
+        html: buildCustomerOrderHtml(customer, items, totals, etaStr, code, lang),
+      }));
+    }
+
+    await Promise.all(emails);
+
+    return {
+      statusCode: 200, headers: CORS,
+      body: JSON.stringify({ success: true, code, eta: etaStr }),
+    };
+  } catch (err) {
+    console.error('order function error:', err);
+    return {
+      statusCode: 500, headers: CORS,
+      body: JSON.stringify({ error: 'Could not place order. Please try again.' }),
+    };
+  }
+};

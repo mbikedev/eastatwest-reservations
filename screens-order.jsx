@@ -668,99 +668,124 @@ function PickupView({ theme, t, lang, value, onChange, onBack, onContinue }) {
 // ─────────────────────────────────────────────────────────────
 // Payment
 // ─────────────────────────────────────────────────────────────
-function PayView({ theme, t, lang, totals, platform, onBack, onPay }) {
-  const [method, setMethod] = React.useState(platform === 'ios' ? 'apple' : 'google');
-  const [processing, setProcessing] = React.useState(false);
-  const pay = () => {
-    setProcessing(true);
-    setTimeout(() => { setProcessing(false); onPay(method); }, 1200);
+function ConfirmView({ theme, t, lang, cart, totals, pickup, onBack, onConfirm, loading, error }) {
+  const savedUser = React.useMemo(() => {
+    try { return JSON.parse(localStorage.getItem('eaw_user') || 'null'); } catch { return null; }
+  }, []);
+  const [name, setName] = React.useState(savedUser?.name || '');
+  const [phone, setPhone] = React.useState(savedUser?.phone || '');
+  const [email, setEmail] = React.useState(savedUser?.email || '');
+  const [errs, setErrs] = React.useState({});
+
+  const inputStyle = (err) => ({
+    width: '100%', boxSizing: 'border-box',
+    background: theme.surface, border: `1.5px solid ${err ? '#ef4444' : theme.line}`,
+    borderRadius: 12, padding: '13px 14px',
+    fontFamily: '"DM Sans", sans-serif', fontSize: 15, color: theme.ink,
+    outline: 'none', appearance: 'none',
+  });
+
+  const submit = () => {
+    const e = {};
+    if (!name.trim() || name.trim().length < 2) e.name = true;
+    if (!phone.replace(/\D/g, '') || phone.replace(/\D/g, '').length < 7) e.phone = true;
+    if (Object.keys(e).length) { setErrs(e); return; }
+    setErrs({});
+    onConfirm({ name: name.trim(), phone: phone.trim(), email: email.trim() });
   };
-  const methods = [
-    { id: 'apple',  label: t.ord_pay_apple,  hide: platform !== 'ios' },
-    { id: 'google', label: t.ord_pay_google, hide: platform !== 'android' },
-    { id: 'card',   label: 'Visa •••• 4291', },
-  ].filter(m => !m.hide);
+
+  const pickupLabel = pickup === 'asap'
+    ? (lang === 'fr' ? 'Dès que possible (~25 min)' : lang === 'nl' ? 'Zo snel mogelijk (~25 min)' : 'As soon as possible (~25 min)')
+    : pickup;
+
   return (
     <div>
-      <PageHeader theme={theme} onBack={onBack} title={t.ord_pay_title} sub={t.ord_pay_sub}/>
-      <div style={{ padding: '0 20px 200px' }}>
-        <Card theme={theme} padding={16}>
-          <Totals totals={totals} theme={theme} t={t}/>
-        </Card>
+      <PageHeader theme={theme} onBack={onBack}
+        title={lang === 'fr' ? 'Confirmer la commande' : lang === 'nl' ? 'Bestelling bevestigen' : 'Confirm order'}
+        sub={lang === 'fr' ? 'Paiement à la collecte — aucune carte requise' : lang === 'nl' ? 'Betaling bij afhaling — geen kaart nodig' : 'Pay at pickup — no card needed'}/>
+      <div style={{ padding: '0 20px 180px' }}>
+
+        {/* Pay-on-pickup badge */}
         <div style={{
-          fontFamily: '"DM Sans", sans-serif',
-          fontSize: 12, fontWeight: 500, color: theme.inkSoft,
-          letterSpacing: 0.4, textTransform: 'uppercase', margin: '22px 0 10px',
-        }}>{lang === 'fr' ? 'Moyen de paiement' : lang === 'nl' ? 'Betaalmethode' : 'Payment method'}</div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {methods.map(m => {
-            const on = m.id === method;
-            return (
-              <button key={m.id} onClick={() => setMethod(m.id)} style={{
-                appearance: 'none', border: 'none', cursor: 'pointer',
-                background: theme.surface, borderRadius: 12,
-                padding: '14px 16px',
-                display: 'flex', alignItems: 'center', gap: 14,
-                textAlign: 'left',
-              }}>
-                <div style={{
-                  width: 32, height: 22, borderRadius: 4,
-                  background: m.id === 'apple' ? '#000' : m.id === 'google' ? '#fff' : 'linear-gradient(135deg,#1A1F71,#2C5BD8)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  flexShrink: 0,
-                  boxShadow: m.id === 'google' ? '0 0 0 1px rgba(0,0,0,0.1)' : 'none',
-                  fontSize: 9, fontWeight: 700,
-                  fontFamily: '"DM Sans", sans-serif',
-                  color: m.id === 'apple' ? '#fff' : m.id === 'google' ? '#4285F4' : '#fff',
-                  letterSpacing: 0.2,
-                }}>
-                  {m.id === 'apple' ? 'Pay' : m.id === 'google' ? 'GPay' : 'VISA'}
-                </div>
-                <span style={{
-                  flex: 1, fontFamily: '"DM Sans", sans-serif',
-                  fontSize: 15, color: theme.ink, fontWeight: 500,
-                }}>{m.label}</span>
-                <div style={{
-                  width: 20, height: 20, borderRadius: 10,
-                  border: `2px solid ${on ? theme.primary : theme.line}`,
-                  background: on ? theme.primary : 'transparent',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}>{on && <div style={{ width: 8, height: 8, borderRadius: 4, background: theme.primaryInk }}/>}</div>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-      <StickyDock><div style={{ padding: '0 16px 10px' }}>
-        <button onClick={processing ? null : pay} style={{
-          appearance: 'none', border: 'none',
-          cursor: processing ? 'default' : 'pointer',
-          width: '100%', height: 54, borderRadius: 14,
-          background: method === 'apple' ? '#000' : (method === 'google' ? '#fff' : theme.primary),
-          color: method === 'google' ? '#1F1F1F' : '#fff',
-          fontFamily: '"DM Sans", sans-serif',
-          fontSize: 16, fontWeight: 600,
-          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-          boxShadow: '0 6px 16px rgba(0,0,0,0.12)',
-          opacity: processing ? 0.7 : 1,
+          display: 'flex', alignItems: 'center', gap: 10,
+          background: theme.surfaceAlt, borderRadius: 12, padding: '12px 16px', marginBottom: 20,
         }}>
-          {processing ? (
-            <Spinner color={method === 'google' ? '#1F1F1F' : '#fff'}/>
-          ) : (
-            <>
-              {method === 'apple' && (
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="#fff"><path d="M16.5 4c.1 1-.3 2-.9 2.7-.7.8-1.7 1.4-2.7 1.3-.1-1 .4-2 .9-2.6.7-.8 1.8-1.3 2.7-1.4zM19 17.5c-.5 1-1 2-1.8 2.9-1 1-2 2-3.4 2-1.3 0-1.7-.7-3.2-.7-1.5 0-2 .7-3.2.7-1.4 0-2.4-1.1-3.4-2.1-1.9-2.2-3.4-6.1-1.4-8.8 1-1.4 2.7-2.2 4.3-2.2 1.3 0 2.5.9 3.3.9.7 0 2.2-1 3.7-.9.6 0 2.4.2 3.5 1.9-.1.1-2.1 1.2-2.1 3.7 0 2.9 2.6 4 2.7 4z"/></svg>
-              )}
-              {method === 'google' && (
-                <span style={{ fontWeight: 700, fontSize: 14 }}>G Pay</span>
-              )}
-              €{totals.total.toFixed(2)}
-            </>
-          )}
-        </button>
-      </div></StickyDock>
+          <div style={{
+            width: 36, height: 36, borderRadius: 18, background: theme.primary,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+          }}>
+            <Icon name="bag" size={18} color={theme.primaryInk}/>
+          </div>
+          <div>
+            <div style={{ fontFamily: '"DM Sans", sans-serif', fontSize: 13, fontWeight: 600, color: theme.ink }}>
+              {lang === 'fr' ? 'Paiement sur place' : lang === 'nl' ? 'Betalen bij afhaling' : 'Pay on pickup'}
+            </div>
+            <div style={{ fontFamily: '"DM Sans", sans-serif', fontSize: 12, color: theme.inkMute, marginTop: 1 }}>
+              {lang === 'fr' ? `Retrait : ${pickupLabel}` : lang === 'nl' ? `Afhalen: ${pickupLabel}` : `Pickup: ${pickupLabel}`}
+            </div>
+          </div>
+          <div style={{ marginLeft: 'auto', fontFamily: '"DM Sans", sans-serif', fontSize: 17, fontWeight: 700, color: theme.primary }}>
+            €{totals.total.toFixed(2)}
+          </div>
+        </div>
+
+        {/* Customer details */}
+        <div style={{ fontFamily: '"DM Sans", sans-serif', fontSize: 11, fontWeight: 600, color: theme.inkMute, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 10 }}>
+          {lang === 'fr' ? 'Vos coordonnées' : lang === 'nl' ? 'Uw gegevens' : 'Your details'}
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <input
+            value={name} onChange={e => setName(e.target.value)}
+            placeholder={t.res_name}
+            style={inputStyle(errs.name)}
+          />
+          <input
+            value={phone} onChange={e => setPhone(e.target.value)}
+            placeholder={t.res_phone}
+            type="tel"
+            style={inputStyle(errs.phone)}
+          />
+          <input
+            value={email} onChange={e => setEmail(e.target.value)}
+            placeholder={`${t.res_email} (${lang === 'fr' ? 'facultatif' : lang === 'nl' ? 'optioneel' : 'optional'})`}
+            type="email"
+            style={inputStyle(false)}
+          />
+        </div>
+        {Object.keys(errs).length > 0 && (
+          <div style={{ fontFamily: '"DM Sans", sans-serif', fontSize: 13, color: '#ef4444', marginTop: 8 }}>
+            {lang === 'fr' ? 'Veuillez remplir tous les champs obligatoires.' : lang === 'nl' ? 'Vul alle verplichte velden in.' : 'Please fill in all required fields.'}
+          </div>
+        )}
+        {error && (
+          <div style={{ fontFamily: '"DM Sans", sans-serif', fontSize: 13, color: '#ef4444', marginTop: 10 }}>{error}</div>
+        )}
+
+        {/* Order summary */}
+        <div style={{ fontFamily: '"DM Sans", sans-serif', fontSize: 11, fontWeight: 600, color: theme.inkMute, textTransform: 'uppercase', letterSpacing: 0.6, margin: '20px 0 10px' }}>
+          {lang === 'fr' ? 'Récapitulatif' : lang === 'nl' ? 'Overzicht' : 'Summary'}
+        </div>
+        <Card theme={theme} padding={16}><Totals totals={totals} theme={theme} t={t}/></Card>
+      </div>
+
+      <StickyDock>
+        <div style={{ padding: '0 16px 10px' }}>
+          <button onClick={loading ? null : submit} style={{
+            appearance: 'none', border: 'none',
+            cursor: loading ? 'default' : 'pointer',
+            width: '100%', height: 54, borderRadius: 14,
+            background: theme.primary, color: theme.primaryInk,
+            fontFamily: '"DM Sans", sans-serif', fontSize: 16, fontWeight: 600,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+            opacity: loading ? 0.7 : 1,
+          }}>
+            {loading ? <Spinner/> : (lang === 'fr' ? 'Passer la commande' : lang === 'nl' ? 'Bestelling plaatsen' : 'Place order')}
+          </button>
+        </div>
+      </StickyDock>
     </div>
   );
+}
 }
 
 function Spinner({ color = '#fff' }) {
@@ -1045,15 +1070,52 @@ function OrderTracking({ theme, t, lang, order, onBack, onAdvance }) {
 // Main takeaway flow controller
 // ─────────────────────────────────────────────────────────────
 function TakeawayFlow({ theme, t, lang, platform, cart, setCart, onPlaceOrder, onTrack, exitTab }) {
-  const [view, setView] = React.useState('menu'); // menu, category, dish, cart, pickup, pay, placed
+  const [view, setView] = React.useState('menu'); // menu, category, dish, cart, pickup, confirm, placed
   const [categoryId, setCategoryId] = React.useState(null);
   const [dishId, setDishId] = React.useState(null);
   const [pickup, setPickup] = React.useState(null);
   const [placedOrder, setPlacedOrder] = React.useState(null);
+  const [orderLoading, setOrderLoading] = React.useState(false);
+  const [orderError, setOrderError] = React.useState(null);
   const totals = cartTotals(cart);
 
   const reset = () => {
     setView('menu'); setCategoryId(null); setDishId(null); setPickup(null);
+    setOrderError(null);
+  };
+
+  const handleConfirm = async (customer) => {
+    setOrderLoading(true);
+    setOrderError(null);
+    try {
+      const items = cart.map(line => {
+        const dish = dishById(line.id);
+        let price = dish ? dish.price : 0;
+        if (line.extras) line.extras.forEach(e => { price += e.price; });
+        return { id: line.id, qty: line.qty, name: dish ? dishName(dish, lang) : line.id, lineTotal: price * line.qty };
+      });
+      const res = await fetch('/.netlify/functions/order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ customer, items, totals, pickup, lang }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) throw new Error(json.error || 'Could not place order');
+      // Save user info for the You page
+      try { localStorage.setItem('eaw_user', JSON.stringify(customer)); } catch (_) {}
+      const order = {
+        code: json.code, eta: json.eta, total: totals.total,
+        items: cart.map(c => ({ id: c.id, qty: c.qty })),
+        status: 'received',
+      };
+      setPlacedOrder(order);
+      onPlaceOrder(order);
+      setView('placed');
+    } catch (err) {
+      setOrderError(err.message || 'Could not place order. Please try again.');
+    } finally {
+      setOrderLoading(false);
+    }
   };
 
   if (view === 'category') {
@@ -1080,29 +1142,14 @@ function TakeawayFlow({ theme, t, lang, platform, cart, setCart, onPlaceOrder, o
   if (view === 'pickup') {
     return <PickupView theme={theme} t={t} lang={lang} value={pickup} onChange={setPickup}
       onBack={() => setView('cart')}
-      onContinue={() => setView('pay')}/>;
+      onContinue={() => setView('confirm')}/>;
   }
-  if (view === 'pay') {
-    return <PayView theme={theme} t={t} lang={lang} platform={platform} totals={totals}
+  if (view === 'confirm') {
+    return <ConfirmView theme={theme} t={t} lang={lang} cart={cart} totals={totals} pickup={pickup}
       onBack={() => setView('pickup')}
-      onPay={() => {
-        const code = String(Math.floor(Math.random() * 90) + 10);
-        // Compute eta string
-        let etaStr = pickup;
-        if (pickup === 'asap') {
-          const e = new Date();
-          e.setMinutes(e.getMinutes() + 25);
-          etaStr = e.toLocaleTimeString(lang === 'fr' ? 'fr-BE' : lang === 'nl' ? 'nl-BE' : 'en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
-        }
-        const order = {
-          code, eta: etaStr, total: totals.total,
-          items: cart.map(c => ({ id: c.id, qty: c.qty })),
-          status: 'received',
-        };
-        setPlacedOrder(order);
-        onPlaceOrder(order);
-        setView('placed');
-      }}/>;
+      onConfirm={handleConfirm}
+      loading={orderLoading}
+      error={orderError}/>;
   }
   if (view === 'placed') {
     return <OrderPlaced theme={theme} t={t} lang={lang}
