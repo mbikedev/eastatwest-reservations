@@ -173,23 +173,21 @@ function HomeHero({ theme, t, lang, greet, closing, isOpenToday, onBook, onChang
         position: 'absolute', left: 24, right: 24, bottom: 38,
         color: '#FBF6EB',
       }}>
-        {/* small "tonight" eyebrow */}
+        {/* subtitle + two-line title */}
         <div style={{
           fontFamily: '"DM Sans", sans-serif',
           fontSize: 12, fontWeight: 700, letterSpacing: 2,
           textTransform: 'uppercase', color: 'rgba(255,245,225,0.95)',
-          marginBottom: 14,
-          display: 'flex', alignItems: 'center', gap: 10,
+          marginBottom: 14, textAlign: 'center',
         }}>
-          <span style={{ width: 22, height: 1, background: 'rgba(255,245,225,0.7)' }}/>
           {lang === 'fr' ? 'Bruxelles \u00b7 Cuisine libanaise' : lang === 'nl' ? 'Brussel \u00b7 Libanese keuken' : 'Brussels \u00b7 Lebanese kitchen'}
         </div>
         <div style={{
           fontFamily: '"Cormorant Garamond", serif',
-          fontSize: 38, fontWeight: 500, lineHeight: 1.05, letterSpacing: -0.5,
+          fontSize: 38, fontWeight: 500, lineHeight: 1.1, letterSpacing: -0.5,
           color: '#FBF6EB', textAlign: 'center',
         }}>
-          {lang === 'fr' ? 'Bienvenue à East At West.' : lang === 'nl' ? 'Welkom bij East At West.' : 'Welcome to East At West.'}
+          {lang === 'fr' ? <React.Fragment>Bienvenue à East<br/>At West.</React.Fragment> : lang === 'nl' ? <React.Fragment>Welkom bij East<br/>At West.</React.Fragment> : <React.Fragment>Welcome to East<br/>At West.</React.Fragment>}
         </div>
       </div>
 
