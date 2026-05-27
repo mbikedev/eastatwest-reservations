@@ -103,16 +103,6 @@ function MenuLanding({ theme, t, lang, cart, onCategory, onDish, onCart }) {
               ))}
             </div>
           </div>
-          {/* Popular */}
-          <SectionTitle theme={theme} sub={t.ord_popular}>{lang === 'fr' ? 'Du four ce soir' : lang === 'nl' ? 'Uit de keuken vanavond' : 'From the kitchen tonight'}</SectionTitle>
-          <div style={{
-            display: 'flex', gap: 12, padding: '0 20px 16px',
-            overflowX: 'auto',
-          }}>
-            {popular.map(d => (
-              <SignatureCard key={d.id} dish={d} theme={theme} t={t} lang={lang} onClick={() => onDish(d.id)}/>
-            ))}
-          </div>
           <div style={{ height: 120 }}/>
         </>
       )}
