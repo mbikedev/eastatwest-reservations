@@ -89,8 +89,6 @@ function HomeScreen({ theme, t, lang, activeOrder, activeReservation, onTab, onC
 // Hero — full-bleed photo + dark gradient + wordmark + greeting
 // ─────────────────────────────────────────────────────────────
 function HomeHero({ theme, t, lang, greet, closing, isOpenToday, onBook, onChangeLanguage }) {
-  const greetLine = lang === 'fr' ? 'bienvenue' : lang === 'nl' ? 'welkom' : 'welcome';
-  const greetItalic = lang === 'fr' ? 'chez nous.' : lang === 'nl' ? 'thuis.' : 'home.';
   return (
     <div style={{
       position: 'relative',
@@ -191,8 +189,8 @@ function HomeHero({ theme, t, lang, greet, closing, isOpenToday, onBook, onChang
           fontSize: 46, fontWeight: 500, lineHeight: 0.98, letterSpacing: -0.8,
           color: '#FBF6EB',
         }}>
-          {greet},<br/>
-          {greetLine} <em style={{ fontWeight: 500, color: theme.accent }}>{greetItalic}</em>
+          Welcome to East At West.<br/>
+          <em style={{ fontWeight: 500, color: theme.accent }}>Lebanese Restaurant.</em>
         </div>
       </div>
 
