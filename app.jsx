@@ -31,7 +31,7 @@ function StickyDock({ children }) {
 
 // ─────────────────────────────────────────────────────────────
 // Phone shell — own status bar + scroll area + nav overlay
-// (Doesn't use IOSDevice's children slot — gives us a real positioned overlay zone)
+// (Doesn\'t use IOSDevice\'s children slot — gives us a real positioned overlay zone)
 // ─────────────────────────────────────────────────────────────
 function PhoneShell({ platform, theme, dark, children, bottomNav, sheet, t, tabKey }) {
   const dockRef = React.useRef(null);
@@ -122,16 +122,16 @@ function PhoneShell({ platform, theme, dark, children, bottomNav, sheet, t, tabK
 // Update screens to use StickyDock for floating CTAs
 // We patch MenuLanding/CategoryView/CartView/PickupView/PayView/DishDetail to
 // portal their sticky bars through StickyDock instead of position:absolute.
-// We'll do it via a wrapping HOC that intercepts the original screen output…
+// We\'ll do it via a wrapping HOC that intercepts the original screen output…
 // but easier: re-export new versions. Already components use position:absolute.
 // Instead, just inject CSS that converts absolute fixed-anchor → StickyDock by
-// wrapping. We'll override by patching specific places: replace the screens'
+// wrapping. We\'ll override by patching specific places: replace the screens'
 // floating elements with a small "DockedCTA" helper rendered via StickyDock.
-// Since we wrote the screens already, we'll add a global overlay class.
+// Since we wrote the screens already, we\'ll add a global overlay class.
 // Simplest: wrap our screens to detect any `data-dock` elements and portal them.
 // Skipping that complexity — instead, the floating elements remain absolutely
 // positioned within the scroll area, but with position: sticky bottom: 100px to
-// pin to viewport. We'll do that via a small style injector here.
+// pin to viewport. We\'ll do that via a small style injector here.
 // ─────────────────────────────────────────────────────────────
 
 // ─────────────────────────────────────────────────────────────
@@ -185,7 +185,7 @@ function MobileShell({ theme, children, bottomNav, sheet, tabKey }) {
 }
 
 // Inject runtime CSS to convert legacy floating bars to sticky positioning so
-// they pin to the phone's visible bottom inside the scroll container.
+// they pin to the phone\'s visible bottom inside the scroll container.
 const __APP_CSS = `
   .phone-app { font-family: "DM Sans", system-ui, sans-serif; }
   /* style scrollbars subtle in scroll area */
@@ -256,7 +256,9 @@ function App() {
         onTab={setTab}
         onChangeLanguage={() => setLangSheetOpen(true)}
         onTrack={() => { setTrackingOrder(activeOrder); setTab('track'); }}
-        onViewReservation={() => setTab('account')}/>;
+        onViewReservation={() => setTab('account')}
+        dark={t.dark}
+        onTheme={() => setTweak('dark', !t.dark)}/>;
     }
     if (tab === 'reserve') {
       return <ReserveFlow theme={theme} t={tt} lang={lang}

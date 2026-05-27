@@ -8,7 +8,7 @@ const HOME_HERO_IMG = 'img/chefs-dish.webp';
 // 0 = Sunday, 1 = Monday … 6 = Saturday. Add closed days here.
 const CLOSED_DAYS = [0]; // Sunday
 
-function HomeScreen({ theme, t, lang, activeOrder, activeReservation, onTab, onChangeLanguage, onTrack, onViewReservation }) {
+function HomeScreen({ theme, t, lang, activeOrder, activeReservation, onTab, onChangeLanguage, onTrack, onViewReservation, dark, onTheme }) {
   const now = new Date();
   const hour = now.getHours();
   const isOpenToday = !CLOSED_DAYS.includes(now.getDay());
@@ -17,7 +17,7 @@ function HomeScreen({ theme, t, lang, activeOrder, activeReservation, onTab, onC
   const closingHour = hour < 15 ? '14:00' : '22:00';
   return (
     <div>
-      <HomeHero theme={theme} t={t} lang={lang} greet={greet} closing={closingHour} isOpenToday={isOpenToday} onBook={() => onTab('reserve')} onChangeLanguage={onChangeLanguage}/>
+      <HomeHero theme={theme} t={t} lang={lang} greet={greet} closing={closingHour} isOpenToday={isOpenToday} onBook={() => onTab('reserve')} onChangeLanguage={onChangeLanguage} dark={dark} onTheme={onTheme}/>
 
       {/* Active strip overlapping the hero curve */}
       {activeOrder && (
@@ -88,7 +88,7 @@ function HomeScreen({ theme, t, lang, activeOrder, activeReservation, onTab, onC
 // ─────────────────────────────────────────────────────────────
 // Hero — full-bleed photo + dark gradient + wordmark + greeting
 // ─────────────────────────────────────────────────────────────
-function HomeHero({ theme, t, lang, greet, closing, isOpenToday, onBook, onChangeLanguage }) {
+function HomeHero({ theme, t, lang, greet, closing, isOpenToday, onBook, onChangeLanguage, dark, onTheme }) {
   return (
     <div style={{
       position: 'relative',
@@ -144,27 +144,31 @@ function HomeHero({ theme, t, lang, greet, closing, isOpenToday, onBook, onChang
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
           <LanguagePill lang={lang} onClick={onChangeLanguage} light/>
-          <div style={{
-            display: 'inline-flex', alignItems: 'center', gap: 8,
-            padding: '7px 12px', borderRadius: 999,
-            background: isOpenToday ? 'rgba(255,255,255,0.12)' : 'rgba(180,60,40,0.30)',
-            backdropFilter: 'blur(14px)',
-            WebkitBackdropFilter: 'blur(14px)',
-            border: isOpenToday ? '1px solid rgba(255,255,255,0.18)' : '1px solid rgba(220,80,60,0.40)',
-            color: '#fff',
-            fontFamily: '"DM Sans", sans-serif',
-            fontSize: 11.5, fontWeight: 500, letterSpacing: 0.3,
-            flexShrink: 0, whiteSpace: 'nowrap',
-          }}>
-            {isOpenToday ? (
-              <>
-                <PulseDot color="#A7E1A4"/>
-                <span style={{ whiteSpace: 'nowrap' }}>{lang === 'fr' ? 'Jusqu\u2019\u00e0' : lang === 'nl' ? 'Tot' : 'Until'} {closing}</span>
-              </>
+          <button
+            onClick={onTheme}
+            style={{
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              width: 36, height: 36, borderRadius: 999,
+              background: 'rgba(255,255,255,0.12)',
+              backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
+              border: '1px solid rgba(255,255,255,0.18)',
+              color: '#fff', cursor: 'pointer',
+              flexShrink: 0,
+              padding: 0, appearance: 'none',
+            }}
+            aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}
+          >
+            {dark ? (
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" fill="#fff"/>
+              </svg>
             ) : (
-              <span style={{ whiteSpace: 'nowrap' }}>{lang === 'fr' ? 'Ferm\u00e9 aujourd\u2019hui' : lang === 'nl' ? 'Vandaag gesloten' : 'Closed today'}</span>
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="4.5" fill="#fff"/>
+                <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" stroke="#fff" strokeWidth="2" strokeLinecap="round"/>
+              </svg>
             )}
-          </div>
+          </button>
         </div>
       </div>
 
@@ -466,7 +470,7 @@ function AboutLocationBlock({ theme, t, lang }) {
           display: 'grid', gridTemplateColumns: '1fr 1fr',
           borderTop: `1px solid ${theme.line}`,
         }}>
-          <AboutAction theme={theme} icon="pin" label={t.res_directions} href="https://maps.google.com/?q=Bld+de+l'Empereur+26,+1000+Brussels" />
+          <AboutAction theme={theme} icon="pin" label={t.res_directions} href="https://maps.google.com/?q=Bld+de+l\'Empereur+26,+1000+Brussels" />
           <AboutAction theme={theme} icon="phone" label={lang === 'fr' ? 'Appeler' : lang === 'nl' ? 'Bellen' : 'Call us'} href="tel:+32465206024" divider />
         </div>
       </Card>
