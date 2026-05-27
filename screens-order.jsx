@@ -231,7 +231,7 @@ function SignatureCard({ dish, theme, t, lang, onClick }) {
           fontSize: 12, color: theme.inkMute, marginTop: 2,
           lineHeight: 1.4,
           overflow: 'hidden', textOverflow: 'ellipsis',
-          display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+          display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical',
         }}>{dishDesc(dish, lang)}</div>
         <div style={{
           marginTop: 8,
@@ -282,7 +282,7 @@ function DishRow({ dish, theme, t, lang, onClick }) {
           fontFamily: '"DM Sans", sans-serif',
           fontSize: 12, color: theme.inkMute, marginTop: 3, lineHeight: 1.4,
           overflow: 'hidden', textOverflow: 'ellipsis',
-          display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+          display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical',
         }}>{dishDesc(dish, lang)}</div>
         <div style={{ display: 'flex', gap: 5, marginTop: 6 }}>
           {dish.tags.map(tg => <Tag key={tg} theme={theme}>{tagLabel(tg, lang)}</Tag>)}
