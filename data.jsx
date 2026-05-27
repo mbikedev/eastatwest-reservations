@@ -412,7 +412,7 @@ const CATEGORIES = [
   { id: 'lunch',    name_key: 'ord_cat_lunch',    swatch: ['#D9A93A', '#A37B22'], photo: 'img/mix-grill.webp' },
   { id: 'mezze',    name_key: 'ord_cat_mezze',    swatch: ['#C2B484', '#9C8B5E'] },
   { id: 'salads',   name_key: 'ord_cat_salads',   swatch: ['#9CAF77', '#5A6A3F'] },
-  { id: 'hot',      name_key: 'ord_cat_hot',      swatch: ['#C66B3C', '#8B4523'] },
+  { id: 'hot',      name_key: 'ord_cat_hot',      swatch: ['#C66B3C', '#8B4523'], photo: 'img/batata-hara.webp' },
   { id: 'sandwiches', name_key: 'ord_cat_sandwiches', swatch: ['#C68B3F', '#7E5520'], photo: 'img/cheese-veget.webp' },
   { id: 'desserts', name_key: 'ord_cat_desserts', swatch: ['#D4A65A', '#8E6126'] },
   { id: 'drinks',   name_key: 'ord_cat_drinks',   swatch: ['#5A6A3F', '#3D4828'] },
