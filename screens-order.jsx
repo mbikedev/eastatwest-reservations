@@ -26,8 +26,10 @@ function cartTotals(cart) {
   return { subtotal, tax, total };
 }
 
-function tagLabel(tag, lang) {
-  if (tag === 'v')  return lang === 'fr' ? 'Vég.' : lang === 'nl' ? 'Veg.' : 'Veg';
+function tagLabel(tag, lang, full = false) {
+  if (tag === 'v')  return full
+    ? (lang === 'fr' ? 'Végan' : lang === 'nl' ? 'Vegan' : 'Vegan')
+    : (lang === 'fr' ? 'Vég.' : lang === 'nl' ? 'Veg.' : 'Veg');
   if (tag === 'gf') return lang === 'fr' ? 'Sans gluten' : lang === 'nl' ? 'Glutenvrij' : 'GF';
   return tag;
 }
@@ -425,7 +427,7 @@ function DishDetail({ theme, t, lang, dishId, onBack, onAdd }) {
           fontSize: 14, color: theme.inkSoft, marginTop: 8, lineHeight: 1.5,
         }}>{dishDesc(dish, lang)}</div>
         <div style={{ display: 'flex', gap: 6, marginTop: 12 }}>
-          {dish.tags.map(tg => <Tag key={tg} theme={theme}>{tagLabel(tg, lang)}</Tag>)}
+          {dish.tags.map(tg => <Tag key={tg} theme={theme}>{tagLabel(tg, lang, true)}</Tag>)}
           {dish.spice && <Tag theme={theme} color={theme.danger}><Icon name="flame" size={11}/> {t.ord_spice}</Tag>}
         </div>
 
