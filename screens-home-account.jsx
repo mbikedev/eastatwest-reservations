@@ -176,21 +176,20 @@ function HomeHero({ theme, t, lang, greet, closing, isOpenToday, onBook, onChang
         {/* small "tonight" eyebrow */}
         <div style={{
           fontFamily: '"DM Sans", sans-serif',
-          fontSize: 10.5, fontWeight: 600, letterSpacing: 2.4,
-          textTransform: 'uppercase', color: 'rgba(255,245,225,0.7)',
-          marginBottom: 12,
+          fontSize: 12, fontWeight: 700, letterSpacing: 2,
+          textTransform: 'uppercase', color: 'rgba(255,245,225,0.95)',
+          marginBottom: 14,
           display: 'flex', alignItems: 'center', gap: 10,
         }}>
-          <span style={{ width: 22, height: 1, background: 'rgba(255,245,225,0.55)' }}/>
+          <span style={{ width: 22, height: 1, background: 'rgba(255,245,225,0.7)' }}/>
           {lang === 'fr' ? 'Bruxelles \u00b7 Cuisine libanaise' : lang === 'nl' ? 'Brussel \u00b7 Libanese keuken' : 'Brussels \u00b7 Lebanese kitchen'}
         </div>
         <div style={{
           fontFamily: '"Cormorant Garamond", serif',
-          fontSize: 46, fontWeight: 500, lineHeight: 0.98, letterSpacing: -0.8,
-          color: '#FBF6EB',
+          fontSize: 40, fontWeight: 500, lineHeight: 1.05, letterSpacing: -0.5,
+          color: '#FBF6EB', whiteSpace: 'nowrap',
         }}>
-          {lang === 'fr' ? 'Bienvenue à East At West.' : lang === 'nl' ? 'Welkom bij East At West.' : 'Welcome to East At West.'}<br/>
-          <em style={{ fontWeight: 500, color: theme.accent }}>{lang === 'fr' ? 'Restaurant Libanais.' : lang === 'nl' ? 'Libanees Restaurant.' : 'Lebanese Restaurant.'}</em>
+          {lang === 'fr' ? 'Bienvenue à East At West.' : lang === 'nl' ? 'Welkom bij East At West.' : 'Welcome to East At West.'}
         </div>
       </div>
 
