@@ -23,7 +23,7 @@ const MENU = {
         fr: 'Taboulé, Houmous, Moutabal, Muhammara, Warak Enab, Moussaka, Foul Moudamas, 2× Falafel, 2× Dessert',
         nl: 'Tabouleh, Hummus, Moutabal, Muhammara, Warak Enab, Moussaka, Foul Moudamas, 2× Falafel, 2× Dessert',
       },
-      price: 65.50, spice: false, tags: [], img: 'set2', photo: 'img/menu-lazeez.webp' },
+      price: 65.50, spice: false, tags: ['v'], img: 'set2', photo: 'img/menu-lazeez.webp' },
     { id: 'menu_sahten', name: 'Menu Sahten',
       desc: {
         en: 'Tabouleh, Hummus, Toshka, Sujuk, Chicken liver, 2× Kibbeh, 2× Skewers, 2× Dessert',

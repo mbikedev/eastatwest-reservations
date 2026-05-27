@@ -221,11 +221,19 @@ function SignatureCard({ dish, theme, t, lang, onClick }) {
         </div>
       )}
       <div style={{ padding: 12 }}>
-        <div style={{
-          fontFamily: '"Cormorant Garamond", serif',
-          fontSize: 18, fontWeight: 600, color: theme.ink,
-          lineHeight: 1.15,
-        }}>{dishName(dish, lang)}</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+          {dish.tags?.includes('v') && (
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0, marginTop: 1 }}>
+              <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm-1 14.5v-5.3C9.5 10.8 8 9 8 7c2.2 0 4 1.3 4.7 3.2C13.4 8.3 15.2 7 17.4 7c0 2-1.5 3.8-3 4.2v5.3h-2l-.4.5-.4-.5z" fill="#1F5C2E"/>
+              <path d="M12 2C7 2 3 6 3 11c0 2.8 1.2 5.3 3.1 7l.9-1C5.3 15.4 4.2 13.3 4.2 11c0-4.3 3.5-7.8 7.8-7.8 4.3 0 7.8 3.5 7.8 7.8 0 2.3-1 4.4-2.7 5.9l.9 1C20 16.3 21.2 13.8 21.2 11 21.2 6 17.2 2 12.2 2H12z" fill="#1F5C2E" opacity="0.3"/>
+            </svg>
+          )}
+          <div style={{
+            fontFamily: '"Cormorant Garamond", serif',
+            fontSize: 18, fontWeight: 600, color: theme.ink,
+            lineHeight: 1.15,
+          }}>{dishName(dish, lang)}</div>
+        </div>
         <div style={{
           fontFamily: '"DM Sans", sans-serif',
           fontSize: 12, color: theme.inkMute, marginTop: 2,
@@ -268,10 +276,20 @@ function DishRow({ dish, theme, t, lang, onClick }) {
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
           <span style={{
-            fontFamily: '"Cormorant Garamond", serif',
-            fontSize: 18, fontWeight: 600, color: theme.ink, lineHeight: 1.15,
+            display: 'flex', alignItems: 'center', gap: 5,
             flex: 1, minWidth: 0,
-          }}>{dishName(dish, lang)}</span>
+          }}>
+            {dish.tags?.includes('v') && (
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0, marginTop: 1 }}>
+                <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm-1 14.5v-5.3C9.5 10.8 8 9 8 7c2.2 0 4 1.3 4.7 3.2C13.4 8.3 15.2 7 17.4 7c0 2-1.5 3.8-3 4.2v5.3h-2l-.4.5-.4-.5z" fill="#1F5C2E"/>
+                <path d="M12 2C7 2 3 6 3 11c0 2.8 1.2 5.3 3.1 7l.9-1C5.3 15.4 4.2 13.3 4.2 11c0-4.3 3.5-7.8 7.8-7.8 4.3 0 7.8 3.5 7.8 7.8 0 2.3-1 4.4-2.7 5.9l.9 1C20 16.3 21.2 13.8 21.2 11 21.2 6 17.2 2 12.2 2H12z" fill="#1F5C2E" opacity="0.3"/>
+              </svg>
+            )}
+            <span style={{
+              fontFamily: '"Cormorant Garamond", serif',
+              fontSize: 18, fontWeight: 600, color: theme.ink, lineHeight: 1.15,
+            }}>{dishName(dish, lang)}</span>
+          </span>
           <span style={{
             fontFamily: '"DM Sans", sans-serif', fontSize: 15, fontWeight: 600,
             color: theme.ink, fontVariantNumeric: 'tabular-nums', flexShrink: 0,
