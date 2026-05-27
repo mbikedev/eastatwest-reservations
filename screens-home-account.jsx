@@ -20,20 +20,15 @@ function HomeScreen({ theme, t, lang, activeOrder, activeReservation, onTab, onC
       <HomeHero theme={theme} t={t} lang={lang} greet={greet} closing={closingHour} isOpenToday={isOpenToday} onBook={() => onTab('reserve')} onChangeLanguage={onChangeLanguage}/>
 
       {/* Active strip overlapping the hero curve */}
-      {(activeOrder || (activeReservation && isOpenToday)) && (
+      {activeOrder && (
         <div style={{ padding: '0 20px', marginTop: -22, position: 'relative', zIndex: 3 }}>
-          {activeOrder && (
-            <ActiveOrderCard theme={theme} t={t} lang={lang} order={activeOrder} onTrack={onTrack}/>
-          )}
-          {activeReservation && !activeOrder && isOpenToday && (
-            <ActiveReservationCard theme={theme} t={t} lang={lang} res={activeReservation} onView={onViewReservation}/>
-          )}
+          <ActiveOrderCard theme={theme} t={t} lang={lang} order={activeOrder} onTrack={onTrack}/>
         </div>
       )}
 
       {/* Quick action tiles */}
       <div style={{
-        padding: (activeOrder || activeReservation) ? '16px 20px 4px' : '24px 20px 4px',
+        padding: activeOrder ? '16px 20px 4px' : '24px 20px 4px',
         display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12,
       }}>
         <QuickTile
