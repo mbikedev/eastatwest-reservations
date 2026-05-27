@@ -400,12 +400,19 @@ function DishDetail({ theme, t, lang, dishId, onBack, onAdd }) {
         position: 'relative', zIndex: 2,
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
-          <div style={{
-            fontFamily: '"Cormorant Garamond", serif',
-            fontSize: 30, fontWeight: 600, color: theme.ink, lineHeight: 1.1,
-            letterSpacing: -0.3,
-            flex: 1, minWidth: 0,
-          }}>{dishName(dish, lang)}</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 7, flex: 1, minWidth: 0 }}>
+            {dish.tags?.includes('v') && (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0, marginTop: 2 }}>
+                <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm-1 14.5v-5.3C9.5 10.8 8 9 8 7c2.2 0 4 1.3 4.7 3.2C13.4 8.3 15.2 7 17.4 7c0 2-1.5 3.8-3 4.2v5.3h-2l-.4.5-.4-.5z" fill="#1F5C2E"/>
+                <path d="M12 2C7 2 3 6 3 11c0 2.8 1.2 5.3 3.1 7l.9-1C5.3 15.4 4.2 13.3 4.2 11c0-4.3 3.5-7.8 7.8-7.8 4.3 0 7.8 3.5 7.8 7.8 0 2.3-1 4.4-2.7 5.9l.9 1C20 16.3 21.2 13.8 21.2 11 21.2 6 17.2 2 12.2 2H12z" fill="#1F5C2E" opacity="0.3"/>
+              </svg>
+            )}
+            <div style={{
+              fontFamily: '"Cormorant Garamond", serif',
+              fontSize: 30, fontWeight: 600, color: theme.ink, lineHeight: 1.1,
+              letterSpacing: -0.3,
+            }}>{dishName(dish, lang)}</div>
+          </div>
           <div style={{
             fontFamily: '"DM Sans", sans-serif',
             fontSize: 22, fontWeight: 600, color: theme.primary,
