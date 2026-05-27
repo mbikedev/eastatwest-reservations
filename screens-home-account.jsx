@@ -33,7 +33,7 @@ function HomeScreen({ theme, t, lang, activeOrder, activeReservation, onTab, onC
       }}>
         <QuickTile
           theme={theme}
-          variant="light"
+          variant="dark"
           title={lang === 'fr' ? 'Réserver' : lang === 'nl' ? 'Reserveren' : 'Reserve'}
           sub={t.home_book_sub}
           icon="calendar"
@@ -41,7 +41,7 @@ function HomeScreen({ theme, t, lang, activeOrder, activeReservation, onTab, onC
         />
         <QuickTile
           theme={theme}
-          variant="dark"
+          variant="light"
           title={lang === 'fr' ? 'Commander' : lang === 'nl' ? 'Bestellen' : 'Order'}
           sub={lang === 'fr' ? 'Prêt en 25 min' : lang === 'nl' ? 'Klaar in 25 min' : 'Takeaway in 25 min'}
           icon="bag"
