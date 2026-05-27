@@ -189,8 +189,8 @@ function HomeHero({ theme, t, lang, greet, closing, isOpenToday, onBook, onChang
           fontSize: 46, fontWeight: 500, lineHeight: 0.98, letterSpacing: -0.8,
           color: '#FBF6EB',
         }}>
-          Welcome to East At West.<br/>
-          <em style={{ fontWeight: 500, color: theme.accent }}>Lebanese Restaurant.</em>
+          {lang === 'fr' ? 'Bienvenue à East At West.' : lang === 'nl' ? 'Welkom bij East At West.' : 'Welcome to East At West.'}<br/>
+          <em style={{ fontWeight: 500, color: theme.accent }}>{lang === 'fr' ? 'Restaurant Libanais.' : lang === 'nl' ? 'Libanees Restaurant.' : 'Lebanese Restaurant.'}</em>
         </div>
       </div>
 
