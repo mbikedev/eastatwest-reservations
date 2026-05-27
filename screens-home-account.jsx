@@ -186,7 +186,7 @@ function HomeHero({ theme, t, lang, greet, closing, isOpenToday, onBook, onChang
         </div>
         <div style={{
           fontFamily: '"Cormorant Garamond", serif',
-          fontSize: 40, fontWeight: 500, lineHeight: 1.05, letterSpacing: -0.5,
+          fontSize: 'clamp(26px, 8.5vw, 40px)', fontWeight: 500, lineHeight: 1.05, letterSpacing: -0.5,
           color: '#FBF6EB', whiteSpace: 'nowrap',
         }}>
           {lang === 'fr' ? 'Bienvenue à East At West.' : lang === 'nl' ? 'Welkom bij East At West.' : 'Welcome to East At West.'}
