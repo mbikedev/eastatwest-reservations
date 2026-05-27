@@ -213,14 +213,14 @@ const MENU = {
         fr: 'Houmous, warak eneb, itch (boulgour), chou-fleur, fattouch',
         nl: 'Hummus, warak eneb, itch (bulgur), bloemkool, fattouch',
       },
-      price: 14.50, spice: false, tags: ['v'], img: 'l0', photo: 'img/mix-break-vegan.webp' },
+      price: 14.50, spice: false, tags: ['v'], img: 'l0', photo: 'img/falafel-plate.webp' },
     { id: 'mix_break',       name: 'Mix Break',
       desc: {
         en: 'Hummus, itch (bulgur), kabab/chich taouk, cauliflower, fattouch',
         fr: 'Houmous, itch (boulgour), kabab/chich taouk, chou-fleur, fattouch',
         nl: 'Hummus, itch (bulgur), kabab/chich taouk, bloemkool, fattouch',
       },
-      price: 16.50, spice: false, tags: [], img: 'l8', photo: 'img/mix-break.webp' },
+      price: 16.50, spice: false, tags: [], img: 'l8', photo: 'img/mix-grill.webp' },
     { id: 'falafel_plate',   name: 'Falafel', name_fr: 'Falafel', name_nl: 'Falafel',
       desc: {
         en: '4 pieces falafel + hummus, moutabal, Fattoush, tahini sauce, pickles',
@@ -409,7 +409,7 @@ const MENU = {
 
 const CATEGORIES = [
   { id: 'sets',     name_key: 'ord_cat_sets',     swatch: ['#3F7841', '#1F5C2E'] },
-  { id: 'lunch',    name_key: 'ord_cat_lunch',    swatch: ['#D9A93A', '#A37B22'] },
+  { id: 'lunch',    name_key: 'ord_cat_lunch',    swatch: ['#D9A93A', '#A37B22'], photo: 'img/mix-grill.webp' },
   { id: 'mezze',    name_key: 'ord_cat_mezze',    swatch: ['#C2B484', '#9C8B5E'] },
   { id: 'salads',   name_key: 'ord_cat_salads',   swatch: ['#9CAF77', '#5A6A3F'] },
   { id: 'hot',      name_key: 'ord_cat_hot',      swatch: ['#C66B3C', '#8B4523'] },
