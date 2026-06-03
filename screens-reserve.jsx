@@ -370,14 +370,26 @@ function fmtDuration(hours, lang) {
 const CAPACITY = 22;
 
 function StepTime({ theme, t, date, value, endValue, mealId, onChange, onEndChange, onMeal, onNext, lang, availability, availLoading, party }) {
-  const slots = timeSlots(date.toISOString().slice(0,10), mealId);
+  const dateStr = date.toISOString().slice(0, 10);
+  const slots = timeSlots(dateStr, mealId);
   const isSat = date.getDay() === 6;
   const [capacityWarning, setCapacityWarning] = React.useState(false);
+
+  // Detect if today\'s lunch / dinner service has fully expired (all slots past the 30-min cutoff)
+  const _todayStr = new Date().toISOString().slice(0, 10);
+  const _isToday = dateStr === _todayStr;
+  const lunchExpired = _isToday && timeSlots(dateStr, 'lunch').every(s => !s.available);
+  const dinnerExpired = _isToday && timeSlots(dateStr, 'dinner').every(s => !s.available);
 
   // Auto-switch to dinner on Saturdays (no lunch service)
   React.useEffect(() => {
     if (isSat && mealId === 'lunch') onMeal('dinner');
   }, [isSat, mealId]);
+
+  // Auto-switch to dinner when today\'s lunch service has passed
+  React.useEffect(() => {
+    if (lunchExpired && mealId === 'lunch') onMeal('dinner');
+  }, [lunchExpired, mealId]);
 
   const seatsLeft = (slotTime) => {
     if (!availability) return CAPACITY;
@@ -427,7 +439,7 @@ function StepTime({ theme, t, date, value, endValue, mealId, onChange, onEndChan
         }}>
           {['lunch', 'dinner'].map(m => {
             const on = m === mealId;
-            const dis = isSat && m === 'lunch';
+            const dis = (isSat && m === 'lunch') || (m === 'lunch' && lunchExpired) || (m === 'dinner' && dinnerExpired);
             return (
               <button key={m} onClick={dis ? null : () => onMeal(m)} style={{
                 appearance: 'none', border: 'none', cursor: dis ? 'default' : 'pointer',
