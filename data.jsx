@@ -471,10 +471,22 @@ function timeSlots(dateStr, mealId) {
 
   // Pseudo-randomly mark some slots as taken, seeded by the date
   const seed = yy + mm + dd;
-  return all.map((t, i) => ({
-    time: t,
-    available: ((seed * 9301 + i * 49297) % 10) > 2,
-  }));
+
+  // For today: disable any slot within 30 min of now or already past
+  const now = new Date();
+  const isToday = date.getFullYear() === now.getFullYear() &&
+    date.getMonth() === now.getMonth() &&
+    date.getDate() === now.getDate();
+  const cutoffMins = isToday ? now.getHours() * 60 + now.getMinutes() + 30 : -1;
+
+  return all.map((t, i) => {
+    const [h, m] = t.split(':').map(Number);
+    const tooSoon = isToday && (h * 60 + m) <= cutoffMins;
+    return {
+      time: t,
+      available: !tooSoon && ((seed * 9301 + i * 49297) % 10) > 2,
+    };
+  });
 }
 
 // Date helpers

@@ -1,5 +1,5 @@
 // Reservation flow — 5 steps: party → date → time → details → confirm
-// then a "you're booked" confirmation screen.
+// then a "you\'re booked" confirmation screen.
 
 // ─────────────────────────────────────────────────────────────
 // Decorative ornament — Lebanese-inspired diamond divider.
@@ -187,6 +187,11 @@ function StepParty({ theme, t, value, onChange, onNext }) {
 function StepDate({ theme, t, value, onChange, onNext, lang }) {
   const today = new Date();
   const todayMid = new Date(today.toDateString());
+  // Check whether today still has any bookable slots (used to disable today in calendar + "Tonight" chip)
+  const _todayStr = today.getFullYear() + '-' +
+    String(today.getMonth() + 1).padStart(2, '0') + '-' +
+    String(today.getDate()).padStart(2, '0');
+  const todayStillOpen = [...timeSlots(_todayStr, 'lunch'), ...timeSlots(_todayStr, 'dinner')].some(s => s.available);
   const [view, setView] = React.useState({
     year: today.getFullYear(), month: today.getMonth(),
   });
@@ -218,7 +223,7 @@ function StepDate({ theme, t, value, onChange, onNext, lang }) {
     }
   }
   const quickChips = [
-    { id: 'tonight', label: t.res_tonight, date: tonight.getDay() === 0 ? null : tonight },
+    { id: 'tonight', label: t.res_tonight, date: (tonight.getDay() === 0 || !todayStillOpen) ? null : tonight },
     { id: 'tomorrow', label: t.res_tomorrow, date: tomorrow.getDay() === 0 ? null : tomorrow },
     { id: 'weekend', label: t.res_weekend, date: weekend },
   ].filter(c => c.date);
@@ -287,9 +292,9 @@ function StepDate({ theme, t, value, onChange, onNext, lang }) {
               const isPast = d < todayMid;
               const isMax = d > max;
               const isClosed = d.getDay() === 0; // Sundays closed
-              const dis = isPast || isMax || isClosed;
-              const isSel = value && isSameDay(d, value);
               const isToday = isSameDay(d, today);
+              const dis = isPast || isMax || isClosed || (isToday && !todayStillOpen);
+              const isSel = value && isSameDay(d, value);
               const isWeekend = d.getDay() === 6;
               return (
                 <button key={i} onClick={dis ? null : () => onChange(d)} style={{
@@ -806,7 +811,7 @@ function StepReview({ theme, t, data, onConfirm, lang, loading, error }) {
             <Icon name="pin" size={18} color={theme.primary}/>
           </div>
           <div>
-            <div style={{ color: theme.ink, fontWeight: 500 }}>Bld de l'Empereur 26, 1000 Brussels</div>
+            <div style={{ color: theme.ink, fontWeight: 500 }}>Bld de l\'Empereur 26, 1000 Brussels</div>
             <div style={{ color: theme.inkMute, marginTop: 2 }}>
               {lang === 'fr' ? 'Belgique · 5 min à pied de la Gare Centrale' : lang === 'nl' ? 'België · 5 min lopen van Brussel-Centraal' : 'Belgium · 5 min walk from Central Station'}
             </div>
