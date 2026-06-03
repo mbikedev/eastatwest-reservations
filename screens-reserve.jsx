@@ -1,6 +1,15 @@
 // Reservation flow — 5 steps: party → date → time → details → confirm
 // then a "you\'re booked" confirmation screen.
 
+// Safe local-date string — avoids UTC offset shifting the day in UTC+ timezones.
+// date.toISOString() converts to UTC first, which maps midnight-local to the
+// previous UTC day for any timezone east of Greenwich.
+function localDateStr(d) {
+  return d.getFullYear() + '-' +
+    String(d.getMonth() + 1).padStart(2, '0') + '-' +
+    String(d.getDate()).padStart(2, '0');
+}
+
 // ─────────────────────────────────────────────────────────────
 // Decorative ornament — Lebanese-inspired diamond divider.
 // Used consistently across the flow as a subtle "stamp" of identity.
@@ -188,9 +197,7 @@ function StepDate({ theme, t, value, onChange, onNext, lang }) {
   const today = new Date();
   const todayMid = new Date(today.toDateString());
   // Check whether today still has any bookable slots (used to disable today in calendar + "Tonight" chip)
-  const _todayStr = today.getFullYear() + '-' +
-    String(today.getMonth() + 1).padStart(2, '0') + '-' +
-    String(today.getDate()).padStart(2, '0');
+  const _todayStr = localDateStr(today);
   const todayStillOpen = [...timeSlots(_todayStr, 'lunch'), ...timeSlots(_todayStr, 'dinner')].some(s => s.available);
   const [view, setView] = React.useState({
     year: today.getFullYear(), month: today.getMonth(),
@@ -370,13 +377,13 @@ function fmtDuration(hours, lang) {
 const CAPACITY = 22;
 
 function StepTime({ theme, t, date, value, endValue, mealId, onChange, onEndChange, onMeal, onNext, lang, availability, availLoading, party }) {
-  const dateStr = date.toISOString().slice(0, 10);
+  const dateStr = localDateStr(date);
   const slots = timeSlots(dateStr, mealId);
   const isSat = date.getDay() === 6;
   const [capacityWarning, setCapacityWarning] = React.useState(false);
 
   // Detect if today\'s lunch / dinner service has fully expired (all slots past the 30-min cutoff)
-  const _todayStr = new Date().toISOString().slice(0, 10);
+  const _todayStr = localDateStr(new Date());
   const _isToday = dateStr === _todayStr;
   const lunchExpired = _isToday && timeSlots(dateStr, 'lunch').every(s => !s.available);
   const dinnerExpired = _isToday && timeSlots(dateStr, 'dinner').every(s => !s.available);
@@ -1048,7 +1055,7 @@ function ReserveFlow({ theme, t, lang, onExit, onConfirmed, initial }) {
   // Fetch real-time seat availability whenever the user enters the time step
   React.useEffect(() => {
     if (step !== 2 || !data.date) return;
-    const dateStr = data.date.toISOString().slice(0, 10);
+    const dateStr = localDateStr(data.date);
     setAvailLoading(true);
     setAvailability(null);
     fetch(`/.netlify/functions/availability?date=${dateStr}`)
@@ -1064,7 +1071,7 @@ function ReserveFlow({ theme, t, lang, onExit, onConfirmed, initial }) {
     try {
       const payload = {
         ...data,
-        date: data.date ? data.date.toISOString().slice(0, 10) : null,
+        date: data.date ? localDateStr(data.date) : null,
       };
       const res = await fetch('/.netlify/functions/reserve', {
         method: 'POST',
