@@ -469,8 +469,7 @@ function timeSlots(dateStr, mealId) {
   const dinner = ['18:00','18:30','19:00','19:30','20:00','20:30','21:00','21:30','22:00'];
   const all = mealId === 'lunch' ? lunch : dinner;
 
-  // Pseudo-randomly mark some slots as taken, seeded by the date
-  const seed = yy + mm + dd;
+
 
   // For today: disable any slot within 30 min of now or already past
   const now = new Date();
@@ -484,7 +483,7 @@ function timeSlots(dateStr, mealId) {
     const tooSoon = isToday && (h * 60 + m) <= cutoffMins;
     return {
       time: t,
-      available: !tooSoon && ((seed * 9301 + i * 49297) % 10) > 2,
+      available: !tooSoon,
     };
   });
 }
