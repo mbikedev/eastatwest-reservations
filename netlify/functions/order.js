@@ -2,6 +2,7 @@
 // Processes a takeaway / delivery order (pay on pickup or cash on delivery): sends notification emails + saves to Supabase.
 
 const nodemailer = require('nodemailer');
+const { signAction } = require('./lib/order-notify');
 
 function parsePort(raw) {
   const n = parseInt(String(raw || '').replace(/\D/g, ''), 10);
@@ -58,6 +59,8 @@ async function saveOrderToSupabase(orderRow, items) {
       console.error(`Supabase order_items error ${itemsRes.status}: ${t}`);
     }
   }
+
+  return orderId;
 }
 
 const CORS = {
@@ -67,7 +70,7 @@ const CORS = {
   'Content-Type': 'application/json',
 };
 
-function buildRestaurantOrderHtml(customer, items, totals, pickup, code, lang, deliveryType, deliveryAddress) {
+function buildRestaurantOrderHtml(customer, items, totals, pickup, code, lang, deliveryType, deliveryAddress, actionHtml = '') {
   const isDelivery = deliveryType === 'delivery';
   const copy = {
     en: { title: isDelivery ? 'New Delivery Order' : 'New Takeaway Order', timeLabel: isDelivery ? 'Delivery time' : 'Pickup time', address: 'Address', name: 'Name', phone: 'Phone', email: 'Email', subtotal: 'Subtotal', tax: 'VAT 12%', total: 'Total', badge: isDelivery ? 'DELIVERY · CASH' : 'PAY ON PICKUP' },
@@ -144,6 +147,7 @@ function buildRestaurantOrderHtml(customer, items, totals, pickup, code, lang, d
             </tr>
           </table></td></tr>
         </table>
+        ${actionHtml}
         <table width="100%" cellpadding="0" cellspacing="0"><tr><td style="height:28px;">&nbsp;</td></tr></table>
       </td></tr>
     </table>
@@ -152,12 +156,38 @@ function buildRestaurantOrderHtml(customer, items, totals, pickup, code, lang, d
 </body></html>`;
 }
 
+// Confirm / reject buttons for the restaurant email (links to order-action).
+function buildActionButtons(baseUrl, orderId, lang) {
+  if (!orderId || !baseUrl) return '';
+  const confirmUrl = `${baseUrl}/.netlify/functions/order-action?orderId=${orderId}&action=confirm&token=${signAction(orderId, 'confirm')}`;
+  const rejectUrl = `${baseUrl}/.netlify/functions/order-action?orderId=${orderId}&action=reject&token=${signAction(orderId, 'reject')}`;
+  const c = {
+    en: { prompt: 'Respond to this order:', confirm: 'Confirm order', reject: 'Reject order' },
+    fr: { prompt: 'Répondre à cette commande :', confirm: 'Confirmer', reject: 'Refuser' },
+    nl: { prompt: 'Reageer op deze bestelling:', confirm: 'Bevestigen', reject: 'Weigeren' },
+  }[lang] || { prompt: 'Respond to this order:', confirm: 'Confirm order', reject: 'Reject order' };
+  return `
+    <table width="100%" cellpadding="0" cellspacing="0" style="padding:8px 28px 0;">
+      <tr><td style="font-size:11px;color:#999;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;padding-bottom:10px;">${c.prompt}</td></tr>
+      <tr><td>
+        <table width="100%" cellpadding="0" cellspacing="0"><tr>
+          <td style="padding-right:6px;width:50%;">
+            <a href="${confirmUrl}" style="display:block;text-align:center;background:#1F5C2E;color:#fff;text-decoration:none;font-size:15px;font-weight:700;padding:13px 0;border-radius:10px;">${c.confirm}</a>
+          </td>
+          <td style="padding-left:6px;width:50%;">
+            <a href="${rejectUrl}" style="display:block;text-align:center;background:#B0413E;color:#fff;text-decoration:none;font-size:15px;font-weight:700;padding:13px 0;border-radius:10px;">${c.reject}</a>
+          </td>
+        </tr></table>
+      </td></tr>
+    </table>`;
+}
+
 function buildCustomerOrderHtml(customer, items, totals, pickup, code, lang, deliveryType, deliveryAddress) {
   const isDelivery = deliveryType === 'delivery';
   const copy = {
     en: {
-      title: isDelivery ? 'Order confirmed!' : 'Order confirmed!',
-      sub: isDelivery ? 'Your order is on its way. Pay cash at the door.' : 'Show this code when you collect your order.',
+      title: 'Order received',
+      sub: isDelivery ? 'Your order is on its way. Pay cash at the door.' : 'We have received your order — the restaurant will confirm it shortly. Keep this code for pickup.',
       timeLabel: isDelivery ? 'Delivered by' : 'Ready by',
       total: isDelivery ? 'Total to pay at the door' : 'Total to pay at pickup',
       addrLabel: 'Delivery address',
@@ -165,8 +195,8 @@ function buildCustomerOrderHtml(customer, items, totals, pickup, code, lang, del
       cancel: 'Questions? Call us at: <a href="tel:+32465206024" style="color:#1F5C2E;font-weight:600;">+32 465 20 60 24</a>',
     },
     fr: {
-      title: 'Commande confirmée !',
-      sub: isDelivery ? 'Votre commande est en route. Payez en espèces à la porte.' : 'Présentez ce code lors du retrait de votre commande.',
+      title: 'Commande reçue',
+      sub: isDelivery ? 'Votre commande est en route. Payez en espèces à la porte.' : 'Nous avons bien reçu votre commande — le restaurant la confirmera sous peu. Conservez ce code pour le retrait.',
       timeLabel: isDelivery ? 'Livraison prévue à' : 'Prêt à',
       total: isDelivery ? 'Total à payer à la porte' : 'Total à payer sur place',
       addrLabel: 'Adresse de livraison',
@@ -174,8 +204,8 @@ function buildCustomerOrderHtml(customer, items, totals, pickup, code, lang, del
       cancel: 'Des questions ? Appelez-nous au : <a href="tel:+32465206024" style="color:#1F5C2E;font-weight:600;">+32 465 20 60 24</a>',
     },
     nl: {
-      title: 'Bestelling bevestigd!',
-      sub: isDelivery ? 'Uw bestelling is onderweg. Betaal contant aan de deur.' : 'Toon deze code bij het afhalen van uw bestelling.',
+      title: 'Bestelling ontvangen',
+      sub: isDelivery ? 'Uw bestelling is onderweg. Betaal contant aan de deur.' : 'We hebben uw bestelling ontvangen — het restaurant bevestigt ze binnenkort. Bewaar deze code voor het afhalen.',
       timeLabel: isDelivery ? 'Geleverd om' : 'Klaar om',
       total: isDelivery ? 'Totaal te betalen aan de deur' : 'Totaal te betalen bij afhaling',
       addrLabel: 'Leveringsadres',
@@ -280,33 +310,7 @@ exports.handler = async (event) => {
     const subjectPrefix = isDelivery ? '[DELIVERY]' : '[ORDER]';
     const subjectSuffix = isDelivery ? `· delivery ${whenStr} · ${deliveryAddress}` : `· pickup ${whenStr}`;
 
-    const emails = [
-      transporter.sendMail({
-        from,
-        to: process.env.SMTP_FROM_EMAIL,
-        replyTo: customer.email || undefined,
-        subject: `${subjectPrefix} ${code} · ${customer.name} ${subjectSuffix}`,
-        html: buildRestaurantOrderHtml(customer, items, totals, whenStr, code, lang, deliveryType, deliveryAddress),
-      }),
-    ];
-
-    if (customer.email) {
-      const subjectMap = {
-        fr: isDelivery ? `Livraison confirmée – East at West (${code})` : `Commande confirmée – East at West (${code})`,
-        nl: isDelivery ? `Levering bevestigd – East at West (${code})` : `Bestelling bevestigd – East at West (${code})`,
-        en: isDelivery ? `Delivery confirmed – East at West (${code})` : `Order confirmed – East at West (${code})`,
-      };
-      emails.push(transporter.sendMail({
-        from,
-        to: customer.email,
-        subject: subjectMap[lang] || subjectMap.en,
-        html: buildCustomerOrderHtml(customer, items, totals, whenStr, code, lang, deliveryType, deliveryAddress),
-      }));
-    }
-
-    await Promise.all(emails);
-
-    // Save to Supabase so the admin orders page can see it
+    // Save to Supabase FIRST so we have the order id for the confirm/reject links.
     const deliveryDate = isoDate;
     const orderRow = {
       customer_name: customer.name,
@@ -320,11 +324,42 @@ exports.handler = async (event) => {
       status: 'pending',
       language: lang,
     };
+    let orderId = null;
     try {
-      await saveOrderToSupabase(orderRow, items);
+      orderId = await saveOrderToSupabase(orderRow, items);
     } catch (dbErr) {
       console.error('Supabase save error (non-fatal):', dbErr);
     }
+
+    // Build the restaurant's one-tap confirm/reject buttons (needs the saved id).
+    const baseUrl = (process.env.URL || `https://${(event.headers && event.headers.host) || ''}`).replace(/\/$/, '');
+    const actionHtml = orderId ? buildActionButtons(baseUrl, orderId, lang) : '';
+
+    const emails = [
+      transporter.sendMail({
+        from,
+        to: process.env.SMTP_FROM_EMAIL,
+        replyTo: customer.email || undefined,
+        subject: `${subjectPrefix} ${code} · ${customer.name} ${subjectSuffix}`,
+        html: buildRestaurantOrderHtml(customer, items, totals, whenStr, code, lang, deliveryType, deliveryAddress, actionHtml),
+      }),
+    ];
+
+    if (customer.email) {
+      const subjectMap = {
+        fr: `Commande reçue – East at West (${code})`,
+        nl: `Bestelling ontvangen – East at West (${code})`,
+        en: `Order received – East at West (${code})`,
+      };
+      emails.push(transporter.sendMail({
+        from,
+        to: customer.email,
+        subject: subjectMap[lang] || subjectMap.en,
+        html: buildCustomerOrderHtml(customer, items, totals, whenStr, code, lang, deliveryType, deliveryAddress),
+      }));
+    }
+
+    await Promise.all(emails);
 
     return {
       statusCode: 200, headers: CORS,
