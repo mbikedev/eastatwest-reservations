@@ -619,16 +619,12 @@ function FulfillmentView({ theme, t, lang, value, onChange, date, onDate, onBack
     return out;
   }, []);
 
-  const selectedDate = date || days[0];
-  const selKey = orderDateStr(selectedDate);
-
-  // Reflect the visible default day into parent state so the payload matches
-  // what the user sees (matters when today is Sunday and the default is Monday).
-  React.useEffect(() => {
-    if (!date) onDate(days[0]);
-  }, []);
+  // No auto-default: the customer must explicitly choose a pickup day.
+  const selectedDate = date;
+  const selKey = selectedDate ? orderDateStr(selectedDate) : '';
 
   const { lunchSlots, dinnerSlots, isAsapAvailable } = React.useMemo(() => {
+    if (!selectedDate) return { lunchSlots: [], dinnerSlots: [], isAsapAvailable: false };
     const now = new Date();
     const isToday = isSameDay(selectedDate, now);
     // Only today's slots get the "at least 25 min from now" cutoff; future days are fully open.
@@ -656,9 +652,10 @@ function FulfillmentView({ theme, t, lang, value, onChange, date, onDate, onBack
     };
   }, [lang, selKey]);
 
-  const noSlots = lunchSlots.length === 0 && dinnerSlots.length === 0 && !isAsapAvailable;
+  const noSlots = !!selectedDate && lunchSlots.length === 0 && dinnerSlots.length === 0 && !isAsapAvailable;
   const asapEta = 25;
-  const canContinue = !!value;
+  // Require BOTH a day and a time before the order can proceed.
+  const canContinue = !!selectedDate && !!value;
 
   const SlotGrid = ({ slots }) => (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 22 }}>
@@ -784,6 +781,16 @@ function FulfillmentView({ theme, t, lang, value, onChange, date, onDate, onBack
             </div>
             <SlotGrid slots={dinnerSlots}/>
           </>
+        )}
+
+        {!selectedDate && (
+          <div style={{ padding: '32px 0', textAlign: 'center', fontFamily: '"DM Sans", sans-serif', fontSize: 14, color: theme.inkMute, lineHeight: 1.7 }}>
+            {lang === 'fr'
+              ? 'Choisissez d’abord un jour de retrait\npour voir les heures disponibles.'
+              : lang === 'nl'
+              ? 'Kies eerst een afhaaldag\nom de beschikbare tijden te zien.'
+              : 'Choose a pickup day first\nto see the available times.'}
+          </div>
         )}
 
         {noSlots && (
