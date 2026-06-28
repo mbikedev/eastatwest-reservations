@@ -599,10 +599,12 @@ function Totals({ totals, theme, t }) {
 // ─────────────────────────────────────────────────────────────
 // Pickup / Delivery fulfillment selector
 // ─────────────────────────────────────────────────────────────
-function FulfillmentView({ theme, t, lang, value, onChange, onBack, onContinue, deliveryType, onDeliveryType, deliveryAddress, onDeliveryAddress }) {
-  const { lunchSlots, dinnerSlots, isAsapAvailable } = React.useMemo(() => {
+function FulfillmentView({ theme, t, lang, value, onChange, onBack, onContinue }) {
+  const { lunchSlots, dinnerSlots, isAsapAvailable, isClosed } = React.useMemo(() => {
     const now = new Date();
     const minMins = now.getHours() * 60 + now.getMinutes() + 25;
+    // Sunday: closed — no pickup orders
+    const isClosed = now.getDay() === 0;
 
     const toLabel = (h, m) => {
       const d = new Date(); d.setHours(h, m, 0, 0);
@@ -617,15 +619,19 @@ function FulfillmentView({ theme, t, lang, value, onChange, onBack, onContinue, 
       return slots;
     };
     const nowMins = now.getHours() * 60 + now.getMinutes();
-    const isAsapAvailable = (nowMins >= 11 * 60 + 30 && nowMins <= 13 * 60 + 5)
-                          || (nowMins >= 18 * 60 && nowMins <= 21 * 60 + 5);
-    return { lunchSlots: genSlots(11, 30, 13, 30), dinnerSlots: genSlots(18, 0, 21, 30), isAsapAvailable };
+    const isAsapAvailable = !isClosed && ((nowMins >= 11 * 60 + 30 && nowMins <= 13 * 60 + 5)
+                          || (nowMins >= 18 * 60 && nowMins <= 21 * 60 + 5));
+    return {
+      lunchSlots: isClosed ? [] : genSlots(11, 30, 13, 30),
+      dinnerSlots: isClosed ? [] : genSlots(18, 0, 21, 30),
+      isAsapAvailable,
+      isClosed,
+    };
   }, [lang]);
 
   const noSlots = lunchSlots.length === 0 && dinnerSlots.length === 0 && !isAsapAvailable;
-  const isDelivery = deliveryType === 'delivery';
-  const asapEta = isDelivery ? 40 : 25;
-  const canContinue = !!value && !(isDelivery && !deliveryAddress.trim());
+  const asapEta = 25;
+  const canContinue = !!value;
 
   const SlotGrid = ({ slots }) => (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 22 }}>
@@ -649,64 +655,31 @@ function FulfillmentView({ theme, t, lang, value, onChange, onBack, onContinue, 
   return (
     <div>
       <PageHeader theme={theme} onBack={onBack}
-        title={lang === 'fr' ? 'Retrait ou livraison' : lang === 'nl' ? 'Afhalen of levering' : 'Pickup or delivery'}
-        sub={lang === 'fr' ? 'Choisissez votre mode de réception' : lang === 'nl' ? 'Kies uw leveringswijze' : 'Choose how to receive your order'}/>
+        title={lang === 'fr' ? 'Heure de retrait' : lang === 'nl' ? 'Afhaaltijd' : 'Pickup time'}
+        sub={lang === 'fr' ? 'Retrait au restaurant uniquement' : lang === 'nl' ? 'Enkel afhalen in het restaurant' : 'Pickup at the restaurant only'}/>
       <div style={{ padding: '0 20px 160px' }}>
 
-        {/* Method toggle */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 24 }}>
-          {[
-            { id: 'pickup',   icon: 'bag', label: lang === 'fr' ? 'Retrait'   : lang === 'nl' ? 'Afhalen' : 'Pickup',   sub: lang === 'fr' ? 'Venez chercher'    : lang === 'nl' ? 'Kom ophalen'      : 'Come & collect' },
-            { id: 'delivery', icon: 'pin', label: lang === 'fr' ? 'Livraison' : lang === 'nl' ? 'Levering' : 'Delivery', sub: lang === 'fr' ? 'À votre adresse'   : lang === 'nl' ? 'Naar uw adres'    : 'To your address' },
-          ].map(opt => {
-            const on = deliveryType === opt.id;
-            return (
-              <button key={opt.id} onClick={() => onDeliveryType(opt.id)} style={{
-                appearance: 'none', cursor: 'pointer', width: '100%', textAlign: 'left',
-                border: `2px solid ${on ? theme.primary : 'transparent'}`,
-                background: on ? theme.primary : theme.surface,
-                color: on ? theme.primaryInk : theme.ink,
-                borderRadius: 16, padding: '16px 14px',
-                display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 8,
-                boxShadow: on ? `0 8px 24px ${theme.primary}44` : '0 1px 3px rgba(0,0,0,0.04)',
-                transition: 'all 200ms ease',
-              }}>
-                <div style={{
-                  width: 36, height: 36, borderRadius: 18,
-                  background: on ? 'rgba(255,255,255,0.25)' : theme.surfaceAlt,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}>
-                  <Icon name={opt.icon} size={18}/>
-                </div>
-                <div>
-                  <div style={{ fontFamily: '"DM Sans", sans-serif', fontSize: 15, fontWeight: 700, lineHeight: 1.2 }}>{opt.label}</div>
-                  <div style={{ fontFamily: '"DM Sans", sans-serif', fontSize: 12, opacity: 0.78, marginTop: 2 }}>{opt.sub}</div>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Delivery address */}
-        {isDelivery && (
-          <div style={{ marginBottom: 24 }}>
-            <div style={{ fontFamily: '"DM Sans", sans-serif', fontSize: 12, fontWeight: 500, color: theme.inkSoft, letterSpacing: 0.4, textTransform: 'uppercase', marginBottom: 8 }}>
-              {lang === 'fr' ? 'Adresse de livraison' : lang === 'nl' ? 'Leveringsadres' : 'Delivery address'}
-            </div>
-            <input
-              value={deliveryAddress}
-              onChange={e => onDeliveryAddress(e.target.value)}
-              placeholder={lang === 'fr' ? 'Rue, numéro, ville' : lang === 'nl' ? 'Straat, nummer, stad' : 'Street, number, city'}
-              style={{
-                width: '100%', boxSizing: 'border-box',
-                background: theme.surface, border: `1.5px solid ${theme.line}`,
-                borderRadius: 12, padding: '13px 14px',
-                fontFamily: '"DM Sans", sans-serif', fontSize: 15, color: theme.ink,
-                outline: 'none', appearance: 'none',
-              }}
-            />
+        {/* Pickup badge */}
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 12,
+          background: theme.surface, borderRadius: 16, padding: '14px 16px', marginBottom: 24,
+          boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+        }}>
+          <div style={{
+            width: 36, height: 36, borderRadius: 18, background: theme.surfaceAlt,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+          }}>
+            <Icon name="bag" size={18}/>
           </div>
-        )}
+          <div>
+            <div style={{ fontFamily: '"DM Sans", sans-serif', fontSize: 15, fontWeight: 700, color: theme.ink, lineHeight: 1.2 }}>
+              {lang === 'fr' ? 'Retrait' : lang === 'nl' ? 'Afhalen' : 'Pickup'}
+            </div>
+            <div style={{ fontFamily: '"DM Sans", sans-serif', fontSize: 12, color: theme.inkMute, marginTop: 2 }}>
+              {lang === 'fr' ? 'Venez chercher au restaurant' : lang === 'nl' ? 'Kom ophalen in het restaurant' : 'Come & collect at the restaurant'}
+            </div>
+          </div>
+        </div>
 
         {/* ASAP */}
         {isAsapAvailable && (
@@ -756,7 +729,17 @@ function FulfillmentView({ theme, t, lang, value, onChange, onBack, onContinue, 
           </>
         )}
 
-        {noSlots && (
+        {isClosed && (
+          <div style={{ padding: '32px 0', textAlign: 'center', fontFamily: '"DM Sans", sans-serif', fontSize: 14, color: theme.inkMute, lineHeight: 1.7 }}>
+            {lang === 'fr'
+              ? 'Fermé le dimanche.\nCommandes du lundi au samedi.'
+              : lang === 'nl'
+              ? 'Gesloten op zondag.\nBestellingen van maandag tot zaterdag.'
+              : 'Closed on Sundays.\nOrders accepted Monday to Saturday.'}
+          </div>
+        )}
+
+        {!isClosed && noSlots && (
           <div style={{ padding: '32px 0', textAlign: 'center', fontFamily: '"DM Sans", sans-serif', fontSize: 14, color: theme.inkMute, lineHeight: 1.7 }}>
             {lang === 'fr'
               ? 'Aucun créneau disponible pour le moment.\nCommandes : 11h30–13h30 et 18h00–21h30.'
@@ -779,7 +762,7 @@ function FulfillmentView({ theme, t, lang, value, onChange, onBack, onContinue, 
 // ─────────────────────────────────────────────────────────────
 // Payment
 // ─────────────────────────────────────────────────────────────
-function ConfirmView({ theme, t, lang, cart, totals, pickup, deliveryType, deliveryAddress, onBack, onConfirm, loading, error }) {
+function ConfirmView({ theme, t, lang, cart, totals, pickup, onBack, onConfirm, loading, error }) {
   const savedUser = React.useMemo(() => {
     try { return JSON.parse(localStorage.getItem('eaw_user') || 'null'); } catch { return null; }
   }, []);
@@ -813,9 +796,7 @@ function ConfirmView({ theme, t, lang, cart, totals, pickup, deliveryType, deliv
     <div>
       <PageHeader theme={theme} onBack={onBack}
         title={lang === 'fr' ? 'Confirmer la commande' : lang === 'nl' ? 'Bestelling bevestigen' : 'Confirm order'}
-        sub={deliveryType === 'delivery'
-          ? (lang === 'fr' ? 'Livraison · paiement en espèces à la porte' : lang === 'nl' ? 'Levering · contante betaling aan de deur' : 'Delivery — cash payment at the door')
-          : (lang === 'fr' ? 'Paiement à la collecte — aucune carte requise' : lang === 'nl' ? 'Betaling bij afhaling — geen kaart nodig' : 'Pay at pickup — no card needed')}/>
+        sub={lang === 'fr' ? 'Paiement à la collecte — aucune carte requise' : lang === 'nl' ? 'Betaling bij afhaling — geen kaart nodig' : 'Pay at pickup — no card needed'}/>
       <div style={{ padding: '0 20px 180px' }}>
 
         {/* Fulfillment badge */}
@@ -825,33 +806,20 @@ function ConfirmView({ theme, t, lang, cart, totals, pickup, deliveryType, deliv
               width: 36, height: 36, borderRadius: 18, background: theme.primary,
               display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
             }}>
-              <Icon name={deliveryType === 'delivery' ? 'pin' : 'bag'} size={18} color={theme.primaryInk}/>
+              <Icon name="bag" size={18} color={theme.primaryInk}/>
             </div>
             <div style={{ flex: 1 }}>
               <div style={{ fontFamily: '"DM Sans", sans-serif', fontSize: 13, fontWeight: 600, color: theme.ink }}>
-                {deliveryType === 'delivery'
-                  ? (lang === 'fr' ? 'Livraison · espèces' : lang === 'nl' ? 'Levering · contant' : 'Delivery · cash')
-                  : (lang === 'fr' ? 'Paiement sur place' : lang === 'nl' ? 'Betalen bij afhaling' : 'Pay on pickup')}
+                {lang === 'fr' ? 'Paiement sur place' : lang === 'nl' ? 'Betalen bij afhaling' : 'Pay on pickup'}
               </div>
               <div style={{ fontFamily: '"DM Sans", sans-serif', fontSize: 12, color: theme.inkMute, marginTop: 1 }}>
-                {deliveryType === 'delivery'
-                  ? (lang === 'fr' ? `Livraison : ${pickupLabel}` : lang === 'nl' ? `Levering: ${pickupLabel}` : `Delivery: ${pickupLabel}`)
-                  : (lang === 'fr' ? `Retrait : ${pickupLabel}` : lang === 'nl' ? `Afhalen: ${pickupLabel}` : `Pickup: ${pickupLabel}`)}
+                {lang === 'fr' ? `Retrait : ${pickupLabel}` : lang === 'nl' ? `Afhalen: ${pickupLabel}` : `Pickup: ${pickupLabel}`}
               </div>
             </div>
             <div style={{ fontFamily: '"DM Sans", sans-serif', fontSize: 17, fontWeight: 700, color: theme.primary }}>
               €{totals.total.toFixed(2)}
             </div>
           </div>
-          {deliveryType === 'delivery' && deliveryAddress && (
-            <div style={{
-              marginTop: 10, paddingTop: 10, borderTop: `1px solid ${theme.line}`,
-              display: 'flex', alignItems: 'center', gap: 8,
-              fontFamily: '"DM Sans", sans-serif', fontSize: 13, color: theme.inkSoft,
-            }}>
-              <Icon name="pin" size={14} color={theme.inkMute}/>{deliveryAddress}
-            </div>
-          )}
         </div>
 
         {/* Customer details */}
@@ -1198,8 +1166,6 @@ function TakeawayFlow({ theme, t, lang, platform, cart, setCart, onPlaceOrder, o
   const [categoryId, setCategoryId] = React.useState(null);
   const [dishId, setDishId] = React.useState(null);
   const [pickup, setPickup] = React.useState(null);
-  const [deliveryType, setDeliveryType] = React.useState('pickup');
-  const [deliveryAddress, setDeliveryAddress] = React.useState('');
   const [placedOrder, setPlacedOrder] = React.useState(null);
   const [orderLoading, setOrderLoading] = React.useState(false);
   const [orderError, setOrderError] = React.useState(null);
@@ -1207,7 +1173,6 @@ function TakeawayFlow({ theme, t, lang, platform, cart, setCart, onPlaceOrder, o
 
   const reset = () => {
     setView('menu'); setCategoryId(null); setDishId(null); setPickup(null);
-    setDeliveryType('pickup'); setDeliveryAddress('');
     setOrderError(null);
   };
 
@@ -1224,7 +1189,7 @@ function TakeawayFlow({ theme, t, lang, platform, cart, setCart, onPlaceOrder, o
       const res = await fetch('/.netlify/functions/order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ customer, items, totals, pickup, lang, deliveryType, deliveryAddress }),
+        body: JSON.stringify({ customer, items, totals, pickup, lang, deliveryType: 'pickup' }),
       });
       const json = await res.json();
       if (!res.ok || !json.success) throw new Error(json.error || 'Could not place order');
@@ -1268,14 +1233,11 @@ function TakeawayFlow({ theme, t, lang, platform, cart, setCart, onPlaceOrder, o
   }
   if (view === 'pickup') {
     return <FulfillmentView theme={theme} t={t} lang={lang} value={pickup} onChange={setPickup}
-      deliveryType={deliveryType} onDeliveryType={setDeliveryType}
-      deliveryAddress={deliveryAddress} onDeliveryAddress={setDeliveryAddress}
       onBack={() => setView('cart')}
       onContinue={() => setView('confirm')}/>;
   }
   if (view === 'confirm') {
     return <ConfirmView theme={theme} t={t} lang={lang} cart={cart} totals={totals} pickup={pickup}
-      deliveryType={deliveryType} deliveryAddress={deliveryAddress}
       onBack={() => setView('pickup')}
       onConfirm={handleConfirm}
       loading={orderLoading}
