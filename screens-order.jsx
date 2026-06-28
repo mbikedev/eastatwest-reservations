@@ -4,6 +4,13 @@
 // ─────────────────────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────────────────────
+// Local YYYY-MM-DD (avoids the UTC shift of toISOString for UTC+ timezones)
+function orderDateStr(d) {
+  return d.getFullYear() + '-' +
+    String(d.getMonth() + 1).padStart(2, '0') + '-' +
+    String(d.getDate()).padStart(2, '0');
+}
+
 function dishById(id) {
   for (const cat of Object.keys(MENU)) {
     const d = MENU[cat].find(d => d.id === id);
@@ -597,18 +604,39 @@ function Totals({ totals, theme, t }) {
 }
 
 // ─────────────────────────────────────────────────────────────
-// Pickup / Delivery fulfillment selector
+// Pickup fulfillment selector — pick a day (Mon–Sat) + a time
 // ─────────────────────────────────────────────────────────────
-function FulfillmentView({ theme, t, lang, value, onChange, onBack, onContinue }) {
-  const { lunchSlots, dinnerSlots, isAsapAvailable, isClosed } = React.useMemo(() => {
+function FulfillmentView({ theme, t, lang, value, onChange, date, onDate, onBack, onContinue }) {
+  // Upcoming open days — next ~3 weeks, Sundays (closed) skipped
+  const days = React.useMemo(() => {
+    const out = [];
+    const start = new Date(); start.setHours(0, 0, 0, 0);
+    for (let i = 0; out.length < 18 && i < 30; i++) {
+      const d = new Date(start); d.setDate(start.getDate() + i);
+      if (d.getDay() === 0) continue; // Sunday: closed
+      out.push(d);
+    }
+    return out;
+  }, []);
+
+  const selectedDate = date || days[0];
+  const selKey = orderDateStr(selectedDate);
+
+  // Reflect the visible default day into parent state so the payload matches
+  // what the user sees (matters when today is Sunday and the default is Monday).
+  React.useEffect(() => {
+    if (!date) onDate(days[0]);
+  }, []);
+
+  const { lunchSlots, dinnerSlots, isAsapAvailable } = React.useMemo(() => {
     const now = new Date();
-    const minMins = now.getHours() * 60 + now.getMinutes() + 25;
-    // Sunday: closed — no pickup orders
-    const isClosed = now.getDay() === 0;
+    const isToday = isSameDay(selectedDate, now);
+    // Only today's slots get the "at least 25 min from now" cutoff; future days are fully open.
+    const minMins = isToday ? now.getHours() * 60 + now.getMinutes() + 25 : -1;
 
     const toLabel = (h, m) => {
       const d = new Date(); d.setHours(h, m, 0, 0);
-      return d.toLocaleTimeString(lang === 'fr' ? 'fr-BE' : lang === 'nl' ? 'nl-BE' : 'en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
+      return d.toLocaleTimeString(_localeFor(lang), { hour: '2-digit', minute: '2-digit', hour12: false });
     };
     const genSlots = (startH, startM, endH, endM) => {
       const slots = [];
@@ -619,15 +647,14 @@ function FulfillmentView({ theme, t, lang, value, onChange, onBack, onContinue }
       return slots;
     };
     const nowMins = now.getHours() * 60 + now.getMinutes();
-    const isAsapAvailable = !isClosed && ((nowMins >= 11 * 60 + 30 && nowMins <= 13 * 60 + 5)
+    const isAsapAvailable = isToday && ((nowMins >= 11 * 60 + 30 && nowMins <= 13 * 60 + 5)
                           || (nowMins >= 18 * 60 && nowMins <= 21 * 60 + 5));
     return {
-      lunchSlots: isClosed ? [] : genSlots(11, 30, 13, 30),
-      dinnerSlots: isClosed ? [] : genSlots(18, 0, 21, 30),
+      lunchSlots: genSlots(11, 30, 13, 30),
+      dinnerSlots: genSlots(18, 0, 21, 30),
       isAsapAvailable,
-      isClosed,
     };
-  }, [lang]);
+  }, [lang, selKey]);
 
   const noSlots = lunchSlots.length === 0 && dinnerSlots.length === 0 && !isAsapAvailable;
   const asapEta = 25;
@@ -655,7 +682,7 @@ function FulfillmentView({ theme, t, lang, value, onChange, onBack, onContinue }
   return (
     <div>
       <PageHeader theme={theme} onBack={onBack}
-        title={lang === 'fr' ? 'Heure de retrait' : lang === 'nl' ? 'Afhaaltijd' : 'Pickup time'}
+        title={lang === 'fr' ? 'Jour et heure de retrait' : lang === 'nl' ? 'Afhaaldag en -tijd' : 'Pickup day & time'}
         sub={lang === 'fr' ? 'Retrait au restaurant uniquement' : lang === 'nl' ? 'Enkel afhalen in het restaurant' : 'Pickup at the restaurant only'}/>
       <div style={{ padding: '0 20px 160px' }}>
 
@@ -679,6 +706,36 @@ function FulfillmentView({ theme, t, lang, value, onChange, onBack, onContinue }
               {lang === 'fr' ? 'Venez chercher au restaurant' : lang === 'nl' ? 'Kom ophalen in het restaurant' : 'Come & collect at the restaurant'}
             </div>
           </div>
+        </div>
+
+        {/* Day selector */}
+        <div style={{ fontFamily: '"DM Sans", sans-serif', fontSize: 12, fontWeight: 500, color: theme.inkSoft, letterSpacing: 0.4, textTransform: 'uppercase', marginBottom: 10 }}>
+          {lang === 'fr' ? 'Jour de retrait' : lang === 'nl' ? 'Afhaaldag' : 'Pickup day'}
+        </div>
+        <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 6, marginBottom: 24, WebkitOverflowScrolling: 'touch' }}>
+          {days.map(d => {
+            const on = isSameDay(d, selectedDate);
+            const isToday = isSameDay(d, new Date());
+            const wd = d.toLocaleDateString(_localeFor(lang), { weekday: 'short' });
+            const mo = d.toLocaleDateString(_localeFor(lang), { month: 'short' });
+            return (
+              <button key={orderDateStr(d)} onClick={() => onDate(d)} style={{
+                appearance: 'none', border: 'none', cursor: 'pointer', flexShrink: 0,
+                minWidth: 60, padding: '10px 8px', borderRadius: 14,
+                background: on ? theme.primary : theme.surface,
+                color: on ? theme.primaryInk : theme.ink,
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
+                boxShadow: on ? `0 8px 20px ${theme.primary}40` : '0 1px 3px rgba(0,0,0,0.04)',
+                transition: 'all 180ms ease',
+              }}>
+                <span style={{ fontFamily: '"DM Sans", sans-serif', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', opacity: 0.85 }}>
+                  {isToday ? (lang === 'fr' ? 'Auj.' : lang === 'nl' ? 'Vandaag' : 'Today') : wd}
+                </span>
+                <span style={{ fontFamily: '"Cormorant Garamond", serif', fontSize: 22, fontWeight: 600, lineHeight: 1 }}>{d.getDate()}</span>
+                <span style={{ fontFamily: '"DM Sans", sans-serif', fontSize: 11, opacity: 0.7 }}>{mo}</span>
+              </button>
+            );
+          })}
         </div>
 
         {/* ASAP */}
@@ -729,23 +786,13 @@ function FulfillmentView({ theme, t, lang, value, onChange, onBack, onContinue }
           </>
         )}
 
-        {isClosed && (
+        {noSlots && (
           <div style={{ padding: '32px 0', textAlign: 'center', fontFamily: '"DM Sans", sans-serif', fontSize: 14, color: theme.inkMute, lineHeight: 1.7 }}>
             {lang === 'fr'
-              ? 'Fermé le dimanche.\nCommandes du lundi au samedi.'
+              ? 'Plus de créneau pour ce jour.\nChoisissez un autre jour ci-dessus.'
               : lang === 'nl'
-              ? 'Gesloten op zondag.\nBestellingen van maandag tot zaterdag.'
-              : 'Closed on Sundays.\nOrders accepted Monday to Saturday.'}
-          </div>
-        )}
-
-        {!isClosed && noSlots && (
-          <div style={{ padding: '32px 0', textAlign: 'center', fontFamily: '"DM Sans", sans-serif', fontSize: 14, color: theme.inkMute, lineHeight: 1.7 }}>
-            {lang === 'fr'
-              ? 'Aucun créneau disponible pour le moment.\nCommandes : 11h30–13h30 et 18h00–21h30.'
-              : lang === 'nl'
-              ? 'Geen tijdsloten beschikbaar.\nBestellingen : 11u30–13u30 en 18u00–21u30.'
-              : 'No slots available right now.\nOrders accepted: 11:30–13:30 and 18:00–21:30.'}
+              ? 'Geen tijdslot meer voor deze dag.\nKies hierboven een andere dag.'
+              : 'No pickup times left for this day.\nPick another day above.'}
           </div>
         )}
       </div>
@@ -762,7 +809,7 @@ function FulfillmentView({ theme, t, lang, value, onChange, onBack, onContinue }
 // ─────────────────────────────────────────────────────────────
 // Payment
 // ─────────────────────────────────────────────────────────────
-function ConfirmView({ theme, t, lang, cart, totals, pickup, onBack, onConfirm, loading, error }) {
+function ConfirmView({ theme, t, lang, cart, totals, pickup, pickupDate, onBack, onConfirm, loading, error }) {
   const savedUser = React.useMemo(() => {
     try { return JSON.parse(localStorage.getItem('eaw_user') || 'null'); } catch { return null; }
   }, []);
@@ -788,9 +835,12 @@ function ConfirmView({ theme, t, lang, cart, totals, pickup, onBack, onConfirm, 
     onConfirm({ name: name.trim(), phone: phone.trim(), email: email.trim() });
   };
 
-  const pickupLabel = pickup === 'asap'
+  const timeLabel = pickup === 'asap'
     ? (lang === 'fr' ? 'Dès que possible (~25 min)' : lang === 'nl' ? 'Zo snel mogelijk (~25 min)' : 'As soon as possible (~25 min)')
     : pickup;
+  // Prefix the chosen day unless it's an ASAP order for today
+  const dayLabel = (pickupDate && pickup !== 'asap') ? fmtFullDate(pickupDate, lang) : '';
+  const pickupLabel = dayLabel ? `${dayLabel} · ${timeLabel}` : timeLabel;
 
   return (
     <div>
@@ -1166,6 +1216,7 @@ function TakeawayFlow({ theme, t, lang, platform, cart, setCart, onPlaceOrder, o
   const [categoryId, setCategoryId] = React.useState(null);
   const [dishId, setDishId] = React.useState(null);
   const [pickup, setPickup] = React.useState(null);
+  const [pickupDate, setPickupDate] = React.useState(null);
   const [placedOrder, setPlacedOrder] = React.useState(null);
   const [orderLoading, setOrderLoading] = React.useState(false);
   const [orderError, setOrderError] = React.useState(null);
@@ -1173,7 +1224,7 @@ function TakeawayFlow({ theme, t, lang, platform, cart, setCart, onPlaceOrder, o
 
   const reset = () => {
     setView('menu'); setCategoryId(null); setDishId(null); setPickup(null);
-    setOrderError(null);
+    setPickupDate(null); setOrderError(null);
   };
 
   const handleConfirm = async (customer) => {
@@ -1189,7 +1240,7 @@ function TakeawayFlow({ theme, t, lang, platform, cart, setCart, onPlaceOrder, o
       const res = await fetch('/.netlify/functions/order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ customer, items, totals, pickup, lang, deliveryType: 'pickup' }),
+        body: JSON.stringify({ customer, items, totals, pickup, pickupDate: pickupDate ? orderDateStr(pickupDate) : null, lang, deliveryType: 'pickup' }),
       });
       const json = await res.json();
       if (!res.ok || !json.success) throw new Error(json.error || 'Could not place order');
@@ -1233,11 +1284,12 @@ function TakeawayFlow({ theme, t, lang, platform, cart, setCart, onPlaceOrder, o
   }
   if (view === 'pickup') {
     return <FulfillmentView theme={theme} t={t} lang={lang} value={pickup} onChange={setPickup}
+      date={pickupDate} onDate={(d) => { setPickupDate(d); setPickup(null); }}
       onBack={() => setView('cart')}
       onContinue={() => setView('confirm')}/>;
   }
   if (view === 'confirm') {
-    return <ConfirmView theme={theme} t={t} lang={lang} cart={cart} totals={totals} pickup={pickup}
+    return <ConfirmView theme={theme} t={t} lang={lang} cart={cart} totals={totals} pickup={pickup} pickupDate={pickupDate}
       onBack={() => setView('pickup')}
       onConfirm={handleConfirm}
       loading={orderLoading}

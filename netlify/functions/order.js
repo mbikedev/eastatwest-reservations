@@ -252,7 +252,7 @@ exports.handler = async (event) => {
   if (event.httpMethod !== 'POST') return { statusCode: 405, headers: CORS, body: JSON.stringify({ error: 'Method not allowed' }) };
 
   try {
-    const { customer, items, totals, pickup, lang = 'en', deliveryType = 'pickup', deliveryAddress = '' } = JSON.parse(event.body || '{}');
+    const { customer, items, totals, pickup, pickupDate = null, lang = 'en', deliveryType = 'pickup', deliveryAddress = '' } = JSON.parse(event.body || '{}');
 
     if (!customer?.name || !customer?.phone || !items?.length) {
       return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: 'Missing required fields' }) };
@@ -262,6 +262,11 @@ exports.handler = async (event) => {
     const from = `"East at West" <${process.env.SMTP_FROM_EMAIL}>`;
     const isDelivery = deliveryType === 'delivery';
 
+    // Pickup date — use the day the customer chose, else today
+    const todayStr = new Date().toISOString().split('T')[0];
+    const isoDate = /^\d{4}-\d{2}-\d{2}$/.test(pickupDate || '') ? pickupDate : todayStr;
+    const isFutureDay = isoDate !== todayStr;
+
     // Compute ETA label
     let etaStr = pickup;
     if (pickup === 'asap') {
@@ -269,9 +274,11 @@ exports.handler = async (event) => {
       e.setMinutes(e.getMinutes() + (isDelivery ? 40 : 25));
       etaStr = e.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
     }
+    // Show "date at time" for orders placed for a future day
+    const whenStr = isFutureDay ? `${isoDate} ${etaStr}` : etaStr;
 
     const subjectPrefix = isDelivery ? '[DELIVERY]' : '[ORDER]';
-    const subjectSuffix = isDelivery ? `· delivery ${etaStr} · ${deliveryAddress}` : `· pickup ${etaStr}`;
+    const subjectSuffix = isDelivery ? `· delivery ${whenStr} · ${deliveryAddress}` : `· pickup ${whenStr}`;
 
     const emails = [
       transporter.sendMail({
@@ -279,7 +286,7 @@ exports.handler = async (event) => {
         to: process.env.SMTP_FROM_EMAIL,
         replyTo: customer.email || undefined,
         subject: `${subjectPrefix} ${code} · ${customer.name} ${subjectSuffix}`,
-        html: buildRestaurantOrderHtml(customer, items, totals, etaStr, code, lang, deliveryType, deliveryAddress),
+        html: buildRestaurantOrderHtml(customer, items, totals, whenStr, code, lang, deliveryType, deliveryAddress),
       }),
     ];
 
@@ -293,14 +300,14 @@ exports.handler = async (event) => {
         from,
         to: customer.email,
         subject: subjectMap[lang] || subjectMap.en,
-        html: buildCustomerOrderHtml(customer, items, totals, etaStr, code, lang, deliveryType, deliveryAddress),
+        html: buildCustomerOrderHtml(customer, items, totals, whenStr, code, lang, deliveryType, deliveryAddress),
       }));
     }
 
     await Promise.all(emails);
 
     // Save to Supabase so the admin orders page can see it
-    const deliveryDate = new Date().toISOString().split('T')[0];
+    const deliveryDate = isoDate;
     const orderRow = {
       customer_name: customer.name,
       customer_email: customer.email || '',
@@ -321,7 +328,7 @@ exports.handler = async (event) => {
 
     return {
       statusCode: 200, headers: CORS,
-      body: JSON.stringify({ success: true, code, eta: etaStr }),
+      body: JSON.stringify({ success: true, code, eta: whenStr }),
     };
   } catch (err) {
     console.error('order function error:', err);
