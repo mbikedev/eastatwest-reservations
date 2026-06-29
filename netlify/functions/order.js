@@ -123,9 +123,9 @@ const CORS = {
 function buildRestaurantOrderHtml(customer, items, totals, pickup, code, lang, deliveryType, deliveryAddress, actionHtml = '') {
   const isDelivery = deliveryType === 'delivery';
   const copy = {
-    en: { title: isDelivery ? 'New Delivery Order' : 'New Takeaway Order', timeLabel: isDelivery ? 'Delivery time' : 'Pickup time', address: 'Address', name: 'Name', phone: 'Phone', email: 'Email', subtotal: 'Subtotal', tax: 'incl. VAT 12%', total: 'Total', badge: isDelivery ? 'DELIVERY · CASH' : 'PAY ON PICKUP' },
-    fr: { title: isDelivery ? 'Nouvelle commande livraison' : 'Nouvelle commande à emporter', timeLabel: isDelivery ? 'Heure de livraison' : 'Heure de retrait', address: 'Adresse', name: 'Nom', phone: 'Téléphone', email: 'E-mail', subtotal: 'Sous-total', tax: 'TVA 12% comprise', total: 'Total', badge: isDelivery ? 'LIVRAISON · ESPÈCES' : 'PAIEMENT SUR PLACE' },
-    nl: { title: isDelivery ? 'Nieuwe leveringsbestelling' : 'Nieuwe afhaalbestelling', timeLabel: isDelivery ? 'Leveringstijd' : 'Afhaaltijd', address: 'Adres', name: 'Naam', phone: 'Telefoon', email: 'E-mail', subtotal: 'Subtotaal', tax: 'incl. 12% btw', total: 'Totaal', badge: isDelivery ? 'LEVERING · CONTANT' : 'BETALEN BIJ AFHALING' },
+    en: { title: isDelivery ? 'New Delivery Order' : 'New Takeaway Order', timeLabel: isDelivery ? 'Delivery time' : 'Pickup time', address: 'Address', name: 'Name', phone: 'Phone', email: 'Email', subtotal: 'Subtotal', tax: 'incl. VAT 6%', total: 'Total', badge: isDelivery ? 'DELIVERY · CASH' : 'PAY ON PICKUP' },
+    fr: { title: isDelivery ? 'Nouvelle commande livraison' : 'Nouvelle commande à emporter', timeLabel: isDelivery ? 'Heure de livraison' : 'Heure de retrait', address: 'Adresse', name: 'Nom', phone: 'Téléphone', email: 'E-mail', subtotal: 'Sous-total', tax: 'TVA 6% comprise', total: 'Total', badge: isDelivery ? 'LIVRAISON · ESPÈCES' : 'PAIEMENT SUR PLACE' },
+    nl: { title: isDelivery ? 'Nieuwe leveringsbestelling' : 'Nieuwe afhaalbestelling', timeLabel: isDelivery ? 'Leveringstijd' : 'Afhaaltijd', address: 'Adres', name: 'Naam', phone: 'Telefoon', email: 'E-mail', subtotal: 'Subtotaal', tax: 'incl. 6% btw', total: 'Totaal', badge: isDelivery ? 'LEVERING · CONTANT' : 'BETALEN BIJ AFHALING' },
   };
   const c = copy[lang] || copy.en;
 

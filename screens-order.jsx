@@ -20,7 +20,7 @@ function dishById(id) {
 }
 
 function cartTotals(cart) {
-  // Menu prices are VAT-inclusive (12%): the total is just the sum of prices —
+  // Menu prices are VAT-inclusive (6%): the total is just the sum of prices —
   // VAT is contained within it, never added on top.
   let total = 0;
   cart.forEach(line => {
@@ -30,7 +30,7 @@ function cartTotals(cart) {
     if (line.extras) line.extras.forEach(e => { p += e.price; });
     total += p * line.qty;
   });
-  const net = total / 1.12;        // amount excl. VAT
+  const net = total / 1.06;        // amount excl. VAT
   const tax = total - net;         // VAT portion already included in the price
   return { subtotal: net, tax, total };
 }
@@ -583,7 +583,7 @@ function CartView({ theme, t, lang, cart, onBack, onUpdate, onRemove, onContinue
 function Totals({ totals, theme, t, lang }) {
   // Menu prices already include VAT, so the customer only sees the final total
   // (with a small "VAT included" note for clarity) — no VAT added on top.
-  const vatNote = lang === 'fr' ? 'TVA 12% comprise' : lang === 'nl' ? 'Incl. 12% btw' : 'VAT 12% included';
+  const vatNote = lang === 'fr' ? 'TVA 6% comprise' : lang === 'nl' ? 'Incl. 6% btw' : 'VAT 6% included';
   return (
     <div>
       <div style={{
