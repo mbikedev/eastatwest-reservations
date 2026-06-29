@@ -41,7 +41,15 @@ async function getOrder(orderId) {
   return Array.isArray(rows) ? rows[0] : rows;
 }
 
-async function updateOrderStatus(orderId, status) {
+// Candidate column values to try, in order of preference. Different deployments
+// use different `status` vocabularies (or an enum/check constraint), so we try
+// the most likely spellings until one is accepted by the database.
+const STATUS_CANDIDATES = {
+  confirmed: ['confirmed', 'accepted', 'approved', 'preparing', 'processing', 'in_progress'],
+  rejected: ['rejected', 'cancelled', 'canceled', 'declined', 'refused'],
+};
+
+async function patchStatus(orderId, status) {
   const { url, headers } = supabaseBase();
   const res = await fetch(`${url}/rest/v1/orders?id=eq.${encodeURIComponent(orderId)}`, {
     method: 'PATCH',
@@ -49,9 +57,29 @@ async function updateOrderStatus(orderId, status) {
     body: JSON.stringify({ status }),
   });
   const text = await res.text();
-  if (!res.ok) throw new Error(`Supabase update error ${res.status}: ${text}`);
-  const rows = JSON.parse(text || '[]');
-  return Array.isArray(rows) ? rows[0] : rows;
+  let rows = [];
+  try { rows = JSON.parse(text || '[]'); } catch (_) { rows = []; }
+  if (!Array.isArray(rows)) rows = [rows];
+  return { ok: res.ok, httpStatus: res.status, rows, text };
+}
+
+// Update the order to a canonical status ('confirmed' | 'rejected'), trying the
+// candidate spellings until the DB accepts one. Returns { row, usedStatus }.
+async function updateOrderStatus(orderId, canonical) {
+  const candidates = STATUS_CANDIDATES[canonical] || [canonical];
+  let last = null;
+  for (const value of candidates) {
+    const r = await patchStatus(orderId, value);
+    if (r.ok && r.rows.length > 0) return { row: r.rows[0], usedStatus: value };
+    last = r;
+    // A 200 with no rows means the value was accepted but no row matched/was
+    // visible (RLS or wrong id) — trying other spellings won't help.
+    if (r.ok && r.rows.length === 0) break;
+  }
+  const detail = last ? `HTTP ${last.httpStatus}: ${last.text}` : 'no response from database';
+  const err = new Error(`Could not update order status. ${detail}`);
+  err.detail = detail;
+  throw err;
 }
 
 // ── Status normalisation ──────────────────────────────────────

@@ -126,13 +126,14 @@ exports.handler = async (event) => {
 
   const lang = row.language || 'en';
 
-  // Already actioned? Don't re-email the customer.
-  if (row.status === 'confirmed' || row.status === 'rejected') {
-    const already = row.status === 'confirmed' ? 'confirmed' : 'rejected';
+  // Already actioned? (any status other than the initial 'pending'.)
+  // Don't re-email the customer.
+  if (row.status && row.status !== 'pending') {
+    const rejectLike = ['rejected', 'cancelled', 'canceled', 'declined', 'refused'].includes(String(row.status).toLowerCase());
     return htmlResponse(200, page({
-      accent: already === 'confirmed' ? BRAND : RED,
-      heading: `Already ${already}`,
-      message: `Order #${orderId} has already been <strong>${already}</strong>. No further action is needed and the customer has already been notified.`,
+      accent: rejectLike ? RED : BRAND,
+      heading: 'Already handled',
+      message: `Order #${orderId} is already marked as <strong>${row.status}</strong>. No further action is needed and the customer has already been notified.`,
       inner: orderSummary(row, lang),
     }));
   }
@@ -157,7 +158,7 @@ exports.handler = async (event) => {
 
   // ── POST: perform the update + notify the customer ──────────
   try {
-    const updated = await updateOrderStatus(orderId, resolved);
+    const { row: updated } = await updateOrderStatus(orderId, resolved);
     const r = updated || row;
     const email = r.customer_email || '';
     let emailed = false;
@@ -183,10 +184,13 @@ exports.handler = async (event) => {
     }));
   } catch (err) {
     console.error('order-action error:', err);
+    const detail = err && err.detail
+      ? `<br/><br/><span style="font-size:12px;color:#9A6B69;">${String(err.detail).replace(/</g, '&lt;').slice(0, 400)}</span>`
+      : '';
     return htmlResponse(500, page({
       accent: RED,
       heading: 'Something went wrong',
-      message: `We could not update order #${orderId}. Please try again, or update it from your dashboard.`,
+      message: `We could not update order #${orderId}. Please try again, or update it from your dashboard.${detail}`,
     }));
   }
 };

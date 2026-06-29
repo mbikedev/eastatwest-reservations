@@ -38,11 +38,12 @@ exports.handler = async (event) => {
     let row = null;
     if (orderId) {
       try {
-        row = await updateOrderStatus(orderId, resolved);
+        const res = await updateOrderStatus(orderId, resolved);
+        row = res.row;
       } catch (dbErr) {
         console.error('Supabase status update error:', dbErr);
         if (!body.email) {
-          return { statusCode: 500, headers: CORS, body: JSON.stringify({ error: 'Could not update order status' }) };
+          return { statusCode: 500, headers: CORS, body: JSON.stringify({ error: 'Could not update order status', detail: dbErr.detail }) };
         }
       }
     }
