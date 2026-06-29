@@ -45,8 +45,15 @@ async function getOrder(orderId) {
 // use different `status` vocabularies (or an enum/check constraint), so we try
 // the most likely spellings until one is accepted by the database.
 const STATUS_CANDIDATES = {
-  confirmed: ['confirmed', 'accepted', 'approved', 'preparing', 'processing', 'in_progress'],
-  rejected: ['rejected', 'cancelled', 'canceled', 'declined', 'refused'],
+  confirmed: [
+    'confirmed', 'accepted', 'approved', 'ready', 'preparing', 'processing',
+    'in_progress', 'paid', 'fulfilled', 'completed', 'done', 'delivered',
+    'served', 'active', 'validated',
+  ],
+  rejected: [
+    'rejected', 'cancelled', 'canceled', 'declined', 'refused', 'denied',
+    'failed', 'void', 'voided', 'refunded',
+  ],
 };
 
 async function patchStatus(orderId, status) {
