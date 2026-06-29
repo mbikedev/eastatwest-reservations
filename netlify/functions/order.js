@@ -42,25 +42,75 @@ async function saveOrderToSupabase(orderRow, items) {
   const orderId = Array.isArray(inserted) ? inserted[0].id : inserted.id;
 
   if (items && items.length > 0) {
-    const itemRows = items.map(item => ({
-      order_id: orderId,
-      product_name: item.name,
-      quantity: item.qty,
-      unit_price: item.price,
-      total_price: item.lineTotal,
-    }));
-    const itemsRes = await fetch(`${url}/rest/v1/order_items`, {
-      method: 'POST',
-      headers: { ...headers, Prefer: 'return=minimal' },
-      body: JSON.stringify(itemRows),
-    });
-    if (!itemsRes.ok) {
-      const t = await itemsRes.text();
-      console.error(`Supabase order_items error ${itemsRes.status}: ${t}`);
+    // order_items.product_id is NOT NULL, so map each cart dish to a products
+    // row by name. The products.name is a multilingual JSON ({en,fr,nl}); we
+    // index every language value so a match works regardless of order language.
+    const productMap = await fetchProductMap(url, headers);
+    const norm = (s) => String(s == null ? '' : s).trim().toLowerCase();
+
+    const itemRows = [];
+    const unmatched = [];
+    for (const item of items) {
+      const pid = productMap.get(norm(item.productName)) || productMap.get(norm(item.name));
+      if (!pid) { unmatched.push(item.name || item.id); continue; }
+      const qty = item.qty || 1;
+      const total = item.lineTotal != null ? item.lineTotal : 0;
+      const unit = item.unitPrice != null ? item.unitPrice : (qty ? total / qty : total);
+      itemRows.push({
+        order_id: orderId,
+        product_id: pid,
+        product_name: item.name,
+        quantity: qty,
+        unit_price: Math.round(unit * 100) / 100,
+        total_price: total,
+      });
+    }
+    if (unmatched.length) {
+      console.warn(`order_items: no product match for: ${unmatched.join(', ')}`);
+    }
+    if (itemRows.length) {
+      const itemsRes = await fetch(`${url}/rest/v1/order_items`, {
+        method: 'POST',
+        headers: { ...headers, Prefer: 'return=minimal' },
+        body: JSON.stringify(itemRows),
+      });
+      if (!itemsRes.ok) {
+        const t = await itemsRes.text();
+        console.error(`Supabase order_items error ${itemsRes.status}: ${t}`);
+      }
     }
   }
 
   return orderId;
+}
+
+// Build a lookup of normalised product name (every language variant) → product id.
+async function fetchProductMap(url, headers) {
+  const map = new Map();
+  try {
+    const res = await fetch(`${url}/rest/v1/products?select=id,name`, { headers });
+    if (!res.ok) {
+      console.error(`Supabase products fetch error ${res.status}: ${await res.text()}`);
+      return map;
+    }
+    const rows = await res.json();
+    const norm = (s) => String(s == null ? '' : s).trim().toLowerCase();
+    for (const p of (Array.isArray(rows) ? rows : [])) {
+      let n = p.name;
+      if (typeof n === 'string') {
+        // name may be a JSON string like {"en":"…","fr":"…"} or a plain string
+        try { const parsed = JSON.parse(n); if (parsed && typeof parsed === 'object') n = parsed; } catch (_) {}
+      }
+      if (n && typeof n === 'object') {
+        for (const v of Object.values(n)) { if (v) map.set(norm(v), p.id); }
+      } else if (n) {
+        map.set(norm(n), p.id);
+      }
+    }
+  } catch (e) {
+    console.error('fetchProductMap error:', e);
+  }
+  return map;
 }
 
 const CORS = {

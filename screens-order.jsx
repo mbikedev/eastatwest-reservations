@@ -1242,7 +1242,13 @@ function TakeawayFlow({ theme, t, lang, platform, cart, setCart, onPlaceOrder, o
         const dish = dishById(line.id);
         let price = dish ? dish.price : 0;
         if (line.extras) line.extras.forEach(e => { price += e.price; });
-        return { id: line.id, qty: line.qty, name: dish ? dishName(dish, lang) : line.id, lineTotal: price * line.qty };
+        return {
+          id: line.id, qty: line.qty,
+          name: dish ? dishName(dish, lang) : line.id,
+          productName: dish ? dish.name : line.id, // English base name, for product lookup
+          unitPrice: price,
+          lineTotal: price * line.qty,
+        };
       });
       const res = await fetch('/.netlify/functions/order', {
         method: 'POST',
