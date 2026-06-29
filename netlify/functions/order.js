@@ -123,9 +123,9 @@ const CORS = {
 function buildRestaurantOrderHtml(customer, items, totals, pickup, code, lang, deliveryType, deliveryAddress, actionHtml = '') {
   const isDelivery = deliveryType === 'delivery';
   const copy = {
-    en: { title: isDelivery ? 'New Delivery Order' : 'New Takeaway Order', timeLabel: isDelivery ? 'Delivery time' : 'Pickup time', address: 'Address', name: 'Name', phone: 'Phone', email: 'Email', subtotal: 'Subtotal', tax: 'VAT 12%', total: 'Total', badge: isDelivery ? 'DELIVERY · CASH' : 'PAY ON PICKUP' },
-    fr: { title: isDelivery ? 'Nouvelle commande livraison' : 'Nouvelle commande à emporter', timeLabel: isDelivery ? 'Heure de livraison' : 'Heure de retrait', address: 'Adresse', name: 'Nom', phone: 'Téléphone', email: 'E-mail', subtotal: 'Sous-total', tax: 'TVA 12%', total: 'Total', badge: isDelivery ? 'LIVRAISON · ESPÈCES' : 'PAIEMENT SUR PLACE' },
-    nl: { title: isDelivery ? 'Nieuwe leveringsbestelling' : 'Nieuwe afhaalbestelling', timeLabel: isDelivery ? 'Leveringstijd' : 'Afhaaltijd', address: 'Adres', name: 'Naam', phone: 'Telefoon', email: 'E-mail', subtotal: 'Subtotaal', tax: 'BTW 12%', total: 'Totaal', badge: isDelivery ? 'LEVERING · CONTANT' : 'BETALEN BIJ AFHALING' },
+    en: { title: isDelivery ? 'New Delivery Order' : 'New Takeaway Order', timeLabel: isDelivery ? 'Delivery time' : 'Pickup time', address: 'Address', name: 'Name', phone: 'Phone', email: 'Email', subtotal: 'Subtotal', tax: 'incl. VAT 12%', total: 'Total', badge: isDelivery ? 'DELIVERY · CASH' : 'PAY ON PICKUP' },
+    fr: { title: isDelivery ? 'Nouvelle commande livraison' : 'Nouvelle commande à emporter', timeLabel: isDelivery ? 'Heure de livraison' : 'Heure de retrait', address: 'Adresse', name: 'Nom', phone: 'Téléphone', email: 'E-mail', subtotal: 'Sous-total', tax: 'TVA 12% comprise', total: 'Total', badge: isDelivery ? 'LIVRAISON · ESPÈCES' : 'PAIEMENT SUR PLACE' },
+    nl: { title: isDelivery ? 'Nieuwe leveringsbestelling' : 'Nieuwe afhaalbestelling', timeLabel: isDelivery ? 'Leveringstijd' : 'Afhaaltijd', address: 'Adres', name: 'Naam', phone: 'Telefoon', email: 'E-mail', subtotal: 'Subtotaal', tax: 'incl. 12% btw', total: 'Totaal', badge: isDelivery ? 'LEVERING · CONTANT' : 'BETALEN BIJ AFHALING' },
   };
   const c = copy[lang] || copy.en;
 
@@ -184,16 +184,12 @@ function buildRestaurantOrderHtml(customer, items, totals, pickup, code, lang, d
           <tr><td><table width="100%" cellpadding="0" cellspacing="0">
             ${itemRows}
             <tr>
-              <td colspan="2" style="padding:10px 0 4px;font-size:12px;color:#999;text-transform:uppercase;letter-spacing:0.4px;">${c.subtotal}</td>
-              <td style="padding:10px 0 4px;font-size:14px;color:#1A2419;text-align:right;">€${totals.subtotal.toFixed(2)}</td>
-            </tr>
-            <tr>
-              <td colspan="2" style="padding:4px 0;font-size:12px;color:#999;text-transform:uppercase;letter-spacing:0.4px;">${c.tax}</td>
-              <td style="padding:4px 0;font-size:14px;color:#1A2419;text-align:right;">€${totals.tax.toFixed(2)}</td>
-            </tr>
-            <tr>
               <td colspan="2" style="padding:10px 0;font-size:14px;font-weight:700;color:#1A2419;border-top:2px solid #1F5C2E;">${c.total}</td>
               <td style="padding:10px 0;font-size:18px;font-weight:700;color:#1F5C2E;text-align:right;border-top:2px solid #1F5C2E;">€${totals.total.toFixed(2)}</td>
+            </tr>
+            <tr>
+              <td colspan="2" style="padding:2px 0 10px;font-size:11px;color:#999;letter-spacing:0.4px;">${c.tax}</td>
+              <td style="padding:2px 0 10px;font-size:12px;color:#999;text-align:right;">€${totals.tax.toFixed(2)}</td>
             </tr>
           </table></td></tr>
         </table>

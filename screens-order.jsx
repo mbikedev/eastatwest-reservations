@@ -20,17 +20,19 @@ function dishById(id) {
 }
 
 function cartTotals(cart) {
-  let subtotal = 0;
+  // Menu prices are VAT-inclusive (12%): the total is just the sum of prices —
+  // VAT is contained within it, never added on top.
+  let total = 0;
   cart.forEach(line => {
     const d = dishById(line.id);
     if (!d) return;
     let p = d.price;
     if (line.extras) line.extras.forEach(e => { p += e.price; });
-    subtotal += p * line.qty;
+    total += p * line.qty;
   });
-  const tax = subtotal * 0.12;
-  const total = subtotal + tax;
-  return { subtotal, tax, total };
+  const net = total / 1.12;        // amount excl. VAT
+  const tax = total - net;         // VAT portion already included in the price
+  return { subtotal: net, tax, total };
 }
 
 function tagLabel(tag, lang, full = false) {
@@ -565,7 +567,7 @@ function CartView({ theme, t, lang, cart, onBack, onUpdate, onRemove, onContinue
         </div>
         {/* Totals */}
         <Card theme={theme} style={{ marginTop: 16 }} padding={16}>
-          <Totals totals={totals} theme={theme} t={t}/>
+          <Totals totals={totals} theme={theme} t={t} lang={lang}/>
         </Card>
       </div>
       {/* sticky continue */}
@@ -578,27 +580,26 @@ function CartView({ theme, t, lang, cart, onBack, onUpdate, onRemove, onContinue
   );
 }
 
-function Totals({ totals, theme, t }) {
-  const row = (label, value, bold) => (
-    <div style={{
-      display: 'flex', justifyContent: 'space-between',
-      padding: '6px 0',
-      fontFamily: '"DM Sans", sans-serif',
-      fontSize: bold ? 17 : 14,
-      fontWeight: bold ? 600 : 500,
-      color: bold ? theme.ink : theme.inkSoft,
-      fontVariantNumeric: 'tabular-nums',
-    }}>
-      <span>{label}</span>
-      <span>€{value.toFixed(2)}</span>
-    </div>
-  );
+function Totals({ totals, theme, t, lang }) {
+  // Menu prices already include VAT, so the customer only sees the final total
+  // (with a small "VAT included" note for clarity) — no VAT added on top.
+  const vatNote = lang === 'fr' ? 'TVA 12% comprise' : lang === 'nl' ? 'Incl. 12% btw' : 'VAT 12% included';
   return (
     <div>
-      {row(t.ord_subtotal, totals.subtotal)}
-      {row(t.ord_tax, totals.tax)}
-      <div style={{ height: 1, background: theme.line, margin: '8px 0' }}/>
-      {row(t.ord_total, totals.total, true)}
+      <div style={{
+        display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
+        padding: '6px 0',
+        fontFamily: '"DM Sans", sans-serif',
+        fontSize: 17, fontWeight: 600, color: theme.ink,
+        fontVariantNumeric: 'tabular-nums',
+      }}>
+        <span>{t.ord_total}</span>
+        <span>€{totals.total.toFixed(2)}</span>
+      </div>
+      <div style={{
+        fontFamily: '"DM Sans", sans-serif', fontSize: 12, color: theme.inkMute,
+        textAlign: 'right', marginTop: 2,
+      }}>{vatNote}</div>
     </div>
   );
 }
@@ -915,7 +916,7 @@ function ConfirmView({ theme, t, lang, cart, totals, pickup, pickupDate, onBack,
         <div style={{ fontFamily: '"DM Sans", sans-serif', fontSize: 11, fontWeight: 600, color: theme.inkMute, textTransform: 'uppercase', letterSpacing: 0.6, margin: '20px 0 10px' }}>
           {lang === 'fr' ? 'Récapitulatif' : lang === 'nl' ? 'Overzicht' : 'Summary'}
         </div>
-        <Card theme={theme} padding={16}><Totals totals={totals} theme={theme} t={t}/></Card>
+        <Card theme={theme} padding={16}><Totals totals={totals} theme={theme} t={t} lang={lang}/></Card>
       </div>
 
       <StickyDock>
