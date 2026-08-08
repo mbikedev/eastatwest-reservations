@@ -608,17 +608,19 @@ function Totals({ totals, theme, t, lang }) {
 // Pickup fulfillment selector — pick a day (Mon–Sat) + a time
 // ─────────────────────────────────────────────────────────────
 function FulfillmentView({ theme, t, lang, value, onChange, date, onDate, onBack, onContinue }) {
-  // Upcoming open days — next ~3 weeks, Sundays (closed) skipped
+  const closures = useClosures();
+  // Upcoming open days — next ~3 weeks, Sundays and holiday closures skipped
   const days = React.useMemo(() => {
     const out = [];
     const start = new Date(); start.setHours(0, 0, 0, 0);
     for (let i = 0; out.length < 18 && i < 30; i++) {
       const d = new Date(start); d.setDate(start.getDate() + i);
       if (d.getDay() === 0) continue; // Sunday: closed
+      if (isClosureDate(d, closures)) continue; // holiday closure
       out.push(d);
     }
     return out;
-  }, []);
+  }, [closures]);
 
   // No auto-default: the customer must explicitly choose a pickup day.
   const selectedDate = date;
@@ -1257,6 +1259,15 @@ function TakeawayFlow({ theme, t, lang, platform, cart, setCart, onPlaceOrder, o
         body: JSON.stringify({ customer, items, totals, pickup, pickupDate: pickupDate ? orderDateStr(pickupDate) : null, lang, deliveryType: 'pickup' }),
       });
       const json = await res.json();
+      if (json.error === 'closed') {
+        throw new Error(
+          lang === 'fr'
+            ? 'Le restaurant est fermé à cette date (congés). Veuillez choisir une autre date.'
+            : lang === 'nl'
+            ? 'Het restaurant is gesloten op deze datum (vakantie). Kies een andere datum.'
+            : 'The restaurant is closed on this date (holidays). Please choose another date.'
+        );
+      }
       if (!res.ok || !json.success) throw new Error(json.error || 'Could not place order');
       // Save user info for the You page
       try { localStorage.setItem('eaw_user', JSON.stringify(customer)); } catch (_) {}

@@ -193,7 +193,7 @@ function StepParty({ theme, t, value, onChange, onNext }) {
 // ─────────────────────────────────────────────────────────────
 // Step 2 — calendar
 // ─────────────────────────────────────────────────────────────
-function StepDate({ theme, t, value, onChange, onNext, lang }) {
+function StepDate({ theme, t, value, onChange, onNext, lang, closures }) {
   const today = new Date();
   const todayMid = new Date(today.toDateString());
   // Check whether today still has any bookable slots (used to disable today in calendar + "Tonight" chip)
@@ -233,7 +233,7 @@ function StepDate({ theme, t, value, onChange, onNext, lang }) {
     { id: 'tonight', label: t.res_tonight, date: (tonight.getDay() === 0 || !todayStillOpen) ? null : tonight },
     { id: 'tomorrow', label: t.res_tomorrow, date: tomorrow.getDay() === 0 ? null : tomorrow },
     { id: 'weekend', label: t.res_weekend, date: weekend },
-  ].filter(c => c.date);
+  ].filter(c => c.date && !isClosureDate(c.date, closures));
 
   const jumpTo = (d) => {
     setView({ year: d.getFullYear(), month: d.getMonth() });
@@ -298,7 +298,7 @@ function StepDate({ theme, t, value, onChange, onNext, lang }) {
               if (!d) return <div key={i}/>;
               const isPast = d < todayMid;
               const isMax = d > max;
-              const isClosed = d.getDay() === 0; // Sundays closed
+              const isClosed = d.getDay() === 0 || isClosureDate(d, closures); // Sundays + holiday closures
               const isToday = isSameDay(d, today);
               const dis = isPast || isMax || isClosed || (isToday && !todayStillOpen);
               const isSel = value && isSameDay(d, value);
@@ -343,6 +343,10 @@ function StepDate({ theme, t, value, onChange, onNext, lang }) {
             </span>
             <span>·</span>
             <span>{lang === 'fr' ? 'Dimanche fermé' : lang === 'nl' ? 'Zondag gesloten' : 'Sundays closed'}</span>
+            {closures && closures.length > 0 && (<>
+              <span>·</span>
+              <span>{lang === 'fr' ? 'Congés : barrés' : lang === 'nl' ? 'Vakantie: doorstreept' : 'Holidays: struck out'}</span>
+            </>)}
           </div>
         </Card>
         <div style={{ marginTop: 24 }}>
@@ -1051,6 +1055,7 @@ function ReserveFlow({ theme, t, lang, onExit, onConfirmed, initial }) {
   const [confirmCode, setConfirmCode] = React.useState(null);
   const [availability, setAvailability] = React.useState(null);
   const [availLoading, setAvailLoading] = React.useState(false);
+  const closures = useClosures();
 
   // Fetch real-time seat availability whenever the user enters the time step
   React.useEffect(() => {
@@ -1079,6 +1084,15 @@ function ReserveFlow({ theme, t, lang, onExit, onConfirmed, initial }) {
         body: JSON.stringify({ data: payload, lang }),
       });
       const json = await res.json();
+      if (json.error === 'closed') {
+        throw new Error(
+          lang === 'fr'
+            ? 'Le restaurant est fermé à cette date (congés). Veuillez choisir une autre date.'
+            : lang === 'nl'
+            ? 'Het restaurant is gesloten op deze datum (vakantie). Kies een andere datum.'
+            : 'The restaurant is closed on this date (holidays). Please choose another date.'
+        );
+      }
       if (json.error === 'overbooking') {
         throw new Error(
           lang === 'fr'
@@ -1129,7 +1143,7 @@ function ReserveFlow({ theme, t, lang, onExit, onConfirmed, initial }) {
         <ProgressBar step={step} total={5} theme={theme}/>
       </div>
       {step === 0 && <StepParty theme={theme} t={t} value={data.party} onChange={(v) => set({ party: v })} onNext={() => setStep(1)}/>}
-      {step === 1 && <StepDate theme={theme} t={t} lang={lang} value={data.date} onChange={(v) => set({ date: v })} onNext={() => setStep(2)}/>}
+      {step === 1 && <StepDate theme={theme} t={t} lang={lang} closures={closures} value={data.date} onChange={(v) => set({ date: v })} onNext={() => setStep(2)}/>}
       {step === 2 && <StepTime theme={theme} t={t} lang={lang} date={data.date} value={data.time} endValue={data.endTime} mealId={data.mealId} availability={availability} availLoading={availLoading} party={data.party} onChange={(v) => set({ time: v })} onEndChange={(v) => set({ endTime: v })} onMeal={(m) => set({ mealId: m, time: null, endTime: null })} onNext={() => setStep(3)}/>}
       {step === 3 && <StepDetails theme={theme} t={t} lang={lang} data={data} onChange={set} onNext={() => setStep(4)}/>}
       {step === 4 && (

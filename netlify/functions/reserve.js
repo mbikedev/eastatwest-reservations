@@ -2,6 +2,7 @@
 // Saves reservation to Supabase + sends SMTP emails via nodemailer.
 
 const nodemailer = require('nodemailer');
+const { fetchActiveHolidays, closureFor } = require('./lib/closures');
 
 // ── SMTP ──────────────────────────────────────────────────────
 function parsePort(raw) {
@@ -381,6 +382,21 @@ exports.handler = async (event) => {
       };
     }
 
+    // Holiday closure guard — reject before capacity check, save, or any email
+    try {
+      const holidays = await fetchActiveHolidays();
+      const closure = closureFor(data.date, holidays);
+      if (closure) {
+        return {
+          statusCode: 409, headers: CORS,
+          body: JSON.stringify({ error: 'closed', name: closure.name }),
+        };
+      }
+    } catch (e) {
+      // Lookup failure falls through: the database trigger still rejects the save.
+      console.error('closure check failed:', e.message);
+    }
+
     // Server-side overbooking guard
     const overbook = await checkCapacity(data.date, data.time, data.endTime, data.party);
     if (overbook) {
@@ -413,6 +429,13 @@ exports.handler = async (event) => {
     } catch (e) {
       supabaseError = e.message;
       console.error('Supabase save failed:', e.message);
+      // The database rejects bookings on closure dates; never confirm one.
+      if (/RESTAURANT_CLOSED/.test(e.message)) {
+        return {
+          statusCode: 409, headers: CORS,
+          body: JSON.stringify({ error: 'closed' }),
+        };
+      }
     }
 
     // Send both emails in parallel

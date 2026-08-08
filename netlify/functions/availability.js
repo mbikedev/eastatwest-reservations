@@ -1,6 +1,8 @@
 // Netlify Function — GET /.netlify/functions/availability?date=YYYY-MM-DD
 // Returns per-slot seat availability computed from existing Supabase reservations.
 
+const { fetchActiveHolidays, closureFor } = require('./lib/closures');
+
 const CAPACITY = 22;
 
 const ALL_SLOTS = [
@@ -33,6 +35,20 @@ exports.handler = async (event) => {
 
   // If Supabase is not configured, return full capacity so the UI still works
   if (!url || !key) return fullCapacity(date);
+
+  // Holiday closures: report every slot as unavailable
+  try {
+    const closure = closureFor(date, await fetchActiveHolidays());
+    if (closure) {
+      const available = Object.fromEntries(ALL_SLOTS.map(s => [s, 0]));
+      return {
+        statusCode: 200, headers: CORS,
+        body: JSON.stringify({ date, available, capacity: CAPACITY, closed: true, closure: closure.name }),
+      };
+    }
+  } catch (_) {
+    // Fall through: reserve function and database trigger still block closed dates.
+  }
 
   let reservations = [];
   try {

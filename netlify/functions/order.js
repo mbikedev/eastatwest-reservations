@@ -3,6 +3,7 @@
 
 const nodemailer = require('nodemailer');
 const { signAction } = require('./lib/order-notify');
+const { fetchActiveHolidays, closureFor } = require('./lib/closures');
 
 function parsePort(raw) {
   const n = parseInt(String(raw || '').replace(/\D/g, ''), 10);
@@ -342,6 +343,21 @@ exports.handler = async (event) => {
     const todayStr = new Date().toISOString().split('T')[0];
     const isoDate = /^\d{4}-\d{2}-\d{2}$/.test(pickupDate || '') ? pickupDate : todayStr;
     const isFutureDay = isoDate !== todayStr;
+
+    // Holiday closure guard — reject before saving or sending any email
+    try {
+      const holidays = await fetchActiveHolidays();
+      const closure = closureFor(isoDate, holidays);
+      if (closure) {
+        return {
+          statusCode: 409, headers: CORS,
+          body: JSON.stringify({ error: 'closed', name: closure.name }),
+        };
+      }
+    } catch (e) {
+      // Lookup failure falls through: the database trigger still rejects the save.
+      console.error('closure check failed:', e.message);
+    }
 
     // Compute ETA label
     let etaStr = pickup;

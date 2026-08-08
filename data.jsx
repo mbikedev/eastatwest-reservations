@@ -517,9 +517,45 @@ function isSameDay(a, b) {
   return a && b && a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 }
 
+// ── Holiday closures ──────────────────────────────────────────
+// Managed in the eastatwest.com admin; served by /.netlify/functions/closures.
+
+function _closureDateStr(d) {
+  const p = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
+// d: Date, closures: rows from the closures function. Mirrors the server logic.
+function isClosureDate(d, closures) {
+  if (!d || !closures || !closures.length) return false;
+  const dateStr = _closureDateStr(d);
+  return closures.some((h) => {
+    if (!h.is_recurring) return dateStr >= h.start_date && dateStr <= h.end_date;
+    const p = h.recurrence_pattern;
+    if (!p) return false;
+    if (h.recurrence_end_date && dateStr > h.recurrence_end_date) return false;
+    if (p.type === 'annual') return p.month === d.getMonth() + 1 && p.day === d.getDate();
+    if (p.type === 'weekly') return d.getDay() === p.day_of_week;
+    if (p.type === 'monthly') return p.day === d.getDate();
+    return false;
+  });
+}
+
+function useClosures() {
+  const [closures, setClosures] = React.useState([]);
+  React.useEffect(() => {
+    fetch('/.netlify/functions/closures')
+      .then((r) => r.json())
+      .then((json) => setClosures(json.closures || []))
+      .catch(() => {}); // fail soft: server functions still block closed dates
+  }, []);
+  return closures;
+}
+
 Object.assign(window, {
   MENU, CATEGORIES, SIGNATURE_IDS,
   MOCK_ACTIVE_ORDER, MOCK_PAST_ORDERS, MOCK_PAST_RESERVATIONS,
   timeSlots, monthDays, fmtMonth, fmtFullDate, isSameDay,
   dishName, dishDesc, _localeFor,
+  isClosureDate, useClosures,
 });
