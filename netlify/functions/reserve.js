@@ -446,7 +446,10 @@ exports.handler = async (event) => {
         html: buildGuestHtml(data, code, lang),
       }),
       transporter.sendMail({
-        from, to: process.env.SMTP_FROM_EMAIL,
+        // Restaurant copy. RESTAURANT_EMAIL lets the recipient differ from the
+        // sender: a self-addressed mail (From == To) with a foreign Reply-To is a
+        // classic spam signal for Gmail.
+        from, to: process.env.RESTAURANT_EMAIL || process.env.SMTP_FROM_EMAIL,
         replyTo: data.email,
         subject: `${pending ? '[PENDING] ' : '[NEW] '}${code} · ${data.party} guests · ${data.date}`,
         html: buildRestaurantHtml(data, code, lang),

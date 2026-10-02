@@ -400,7 +400,7 @@ exports.handler = async (event) => {
     const emails = [
       transporter.sendMail({
         from,
-        to: process.env.SMTP_FROM_EMAIL,
+        to: process.env.RESTAURANT_EMAIL || process.env.SMTP_FROM_EMAIL,
         replyTo: customer.email || undefined,
         subject: `${subjectPrefix} ${code} · ${customer.name} ${subjectSuffix}`,
         html: buildRestaurantOrderHtml(customer, items, totals, whenStr, code, lang, deliveryType, deliveryAddress, actionHtml),
